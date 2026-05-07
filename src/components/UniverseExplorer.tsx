@@ -1,0 +1,393 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Search, 
+  Filter, 
+  Download, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Maximize2,
+  RefreshCcw,
+  Zap,
+  ShieldCheck,
+  TrendingUp,
+  Globe
+} from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Cell
+} from 'recharts';
+import { motion } from 'framer-motion';
+import { cn } from '../lib/utils';
+import { Security, UniverseQueryResponse } from '../types';
+
+export default function UniverseExplorer() {
+  const [query, setQuery] = useState('');
+  const [selectedSector, setSelectedSector] = useState<string>('');
+  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
+  const [securities, setSecurities] = useState<Security[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedSecurity, setSelectedSecurity] = useState<Security | null>(null);
+  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+
+  const [isLiveMode, setIsLiveMode] = useState(true);
+  const [lastUpdatedId, setLastUpdatedId] = useState<string | null>(null);
+
+  const SECTORS = ["Technology", "Semiconductors", "Consumer", "Automotive", "Finance", "Healthcare", "Energy"];
+  const THEMES = ["Consumer Tech", "Enterprise Software", "Lithography", "AI/GPU", "Luxury", "EV Transition", "Global Banking", "Personal Care"];
+
+  const performSearch = async (val: string = "", filters?: any) => {
+    setIsLoading(true);
+    const searchFilters = { ...filters };
+    if (selectedSector && !searchFilters.sector) {
+      searchFilters.sector = selectedSector;
+    }
+    if (selectedThemes.length > 0 && !searchFilters.themes) {
+      searchFilters.themes = selectedThemes;
+    }
+
+    try {
+      const response = await fetch('/api/universe/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: val, filters: searchFilters })
+      });
+      const data: UniverseQueryResponse = await response.json();
+      setSecurities(data.results);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    performSearch();
+
+    const handleChatQuery = (e: any) => {
+      const { query, filters } = e.detail;
+      setQuery(query);
+      if (filters?.sector) {
+        setSelectedSector(filters.sector);
+      }
+      if (filters?.themes) {
+        setSelectedThemes(filters.themes);
+      }
+      performSearch(query, filters);
+    };
+
+    window.addEventListener('bit_query_universe', handleChatQuery);
+    return () => window.removeEventListener('bit_query_universe', handleChatQuery);
+  }, []);
+
+  // Real-time market simulation interval
+  useEffect(() => {
+    if (!isLiveMode || securities.length === 0) return;
+
+    const interval = setInterval(() => {
+      // Pick 2 random securities to update instead of 1 for more activity
+      const randomIndices = Array.from({ length: 2 }, () => Math.floor(Math.random() * securities.length));
+      const targetIds = randomIndices.map(idx => securities[idx].id);
+      
+      setSecurities(prev => prev.map((s, i) => {
+        if (randomIndices.includes(i)) {
+          // Volatility factor based on momentum
+          const volatility = 0.03 + (s.momentum * 0.05);
+          const drift = (Math.random() * volatility * 2) - volatility;
+          
+          return {
+            ...s,
+            score: Math.max(0, Math.min(1, s.score + drift)),
+            momentum: Math.max(0, Math.min(1, s.momentum + (drift * 0.8)))
+          };
+        }
+        return s;
+      }));
+
+      // Highlight the first updated security for visual feedback
+      setLastUpdatedId(targetIds[0]);
+      const timer = setTimeout(() => setLastUpdatedId(null), 1200);
+      return () => clearTimeout(timer);
+    }, 2000); // More frequent updates
+
+    return () => clearInterval(interval);
+  }, [isLiveMode, securities.length]);
+
+  return (
+    <div className="flex flex-col h-full space-y-6">
+      {/* Search and Filters Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex-1 min-w-[300px] relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525B] group-focus-within:text-[#00FF41] transition-colors" size={18} />
+          <input 
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && performSearch(query)}
+            placeholder="Search universe by geography, theme, or ticker..."
+            className="w-full bg-[#0D0D0F] border border-[#1F1F23] rounded-md py-2.5 pl-10 pr-24 text-sm focus:outline-none focus:border-[#00FF41]/50 focus:ring-1 focus:ring-[#00FF41]/20 transition-all font-mono"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+             <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#00FF41]/5 border border-[#00FF41]/10">
+                <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
+                <span className="text-[8px] font-mono text-[#00FF41] font-bold">SESSION_ACTIVE</span>
+             </div>
+             <kbd className="px-1.5 py-0.5 rounded bg-[#16161A] border border-[#1F1F23] text-[10px] font-mono text-[#52525B]">ENTER</kbd>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsLiveMode(!isLiveMode)}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 border rounded-md text-xs font-mono transition-all",
+              isLiveMode 
+                ? "bg-[#00FF41]/10 border-[#00FF41]/30 text-[#00FF41]" 
+                : "bg-[#0D0D0F] border-[#1F1F23] text-[#71717A]"
+            )}
+          >
+            <RefreshCcw size={14} className={isLiveMode ? "animate-spin-slow" : ""} />
+            {isLiveMode ? "LIVE_FEED_ON" : "LIVE_FEED_OFF"}
+          </button>
+          <select 
+            value={selectedSector}
+            onChange={(e) => {
+              setSelectedSector(e.target.value);
+              performSearch(query, { sector: e.target.value, themes: selectedThemes });
+            }}
+            className="bg-[#0D0D0F] border border-[#1F1F23] rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-[#00FF41]/50 text-[#E4E4E7]"
+          >
+            <option value="">ALL_SECTORS</option>
+            {SECTORS.map(s => (
+              <option key={s} value={s}>{s.toUpperCase()}</option>
+            ))}
+          </select>
+
+          {/* Theme Multi-select */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowThemeDropdown(!showThemeDropdown)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 bg-[#0D0D0F] border rounded-md text-xs font-mono transition-all",
+                selectedThemes.length > 0 ? "border-[#00FF41]/50 text-[#00FF41]" : "border-[#1F1F23] text-[#71717A] hover:border-[#52525B]"
+              )}
+            >
+              <Zap size={14} />
+              {selectedThemes.length > 0 ? `THEMES (${selectedThemes.length})` : "SELECT_THEMES"}
+            </button>
+            
+            {showThemeDropdown && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowThemeDropdown(false)} />
+                <div className="absolute top-full mt-2 left-0 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200">
+                  {THEMES.map(theme => (
+                    <button
+                      key={theme}
+                      onClick={() => {
+                        const newThemes = selectedThemes.includes(theme)
+                          ? selectedThemes.filter(t => t !== theme)
+                          : [...selectedThemes, theme];
+                        setSelectedThemes(newThemes);
+                        performSearch(query, { themes: newThemes, sector: selectedSector });
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded text-[10px] font-mono transition-colors flex items-center justify-between",
+                        selectedThemes.includes(theme) ? "bg-[#00FF41]/10 text-[#00FF41]" : "text-[#71717A] hover:bg-[#16161A] hover:text-[#E4E4E7]"
+                      )}
+                    >
+                      {theme.toUpperCase()}
+                      {selectedThemes.includes(theme) && <div className="w-1.5 h-1.5 rounded-full bg-[#00FF41]" />}
+                    </button>
+                  ))}
+                  {selectedThemes.length > 0 && (
+                    <button 
+                      onClick={() => {
+                        setSelectedThemes([]);
+                        performSearch(query, { themes: [], sector: selectedSector });
+                        setShowThemeDropdown(false);
+                      }}
+                      className="w-full text-center py-2 text-[9px] font-mono text-red-400 hover:bg-red-400/5 mt-1 border-t border-[#1F1F23]"
+                    >
+                      CLEAR_ALL
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          <button className="flex items-center gap-2 px-3 py-2 bg-[#0D0D0F] border border-[#1F1F23] rounded-md text-xs font-mono hover:border-[#52525B] transition-all">
+            <Filter size={14} />
+            FILTERS
+          </button>
+          <button 
+             onClick={() => performSearch(query)}
+             className="p-2 bg-[#0D0D0F] border border-[#1F1F23] rounded-md hover:text-[#00FF41] transition-all"
+          >
+            <RefreshCcw size={16} className={isLoading ? "animate-spin" : ""} />
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 bg-[#00FF41] text-black rounded-md text-xs font-bold hover:bg-[#00E53B] transition-all">
+            <Download size={14} />
+            EXPORT_BASKET
+          </button>
+        </div>
+      </div>
+
+      {/* Main Grid & Chart Layout */}
+      <div className="flex-1 grid grid-cols-12 gap-6 min-h-0">
+        
+        {/* Universe Metrics Summary */}
+        <div className="col-span-12 grid grid-cols-1 md:grid-cols-4 gap-4">
+           {[
+             { label: 'AVG ESG SCORE', value: (78.2 + (isLiveMode ? (Math.random() * 0.4 - 0.2) : 0)).toFixed(1), change: '+2.4%', icon: ShieldCheck, color: '#00FF41' },
+             { label: 'TOP SECTOR', value: 'TECH', sub: '34% WEIGHT', icon: Zap, color: '#3B82F6' },
+             { label: 'MOMENTUM', value: 'BULLISH', change: isLiveMode ? `${(82 + (Math.random() * 2 - 1)).toFixed(1)}%` : '82%', icon: TrendingUp, color: '#F43F5E' },
+             { label: 'COVERAGE', value: '30,241', sub: 'INSTRUMENTS', icon: Globe, color: '#71717A' },
+           ].map((stat, i) => (
+             <div key={i} className="bg-[#0D0D0F] border border-[#1F1F23] p-4 rounded-lg relative overflow-hidden group hover:border-[#00FF41]/30 transition-all">
+                <div className="flex justify-between items-start relative z-10">
+                   <div>
+                      <p className="text-[10px] font-mono text-[#52525B] tracking-wider mb-1">{stat.label}</p>
+                      <h4 className="text-xl font-bold tracking-tight">{stat.value}</h4>
+                      <p className={cn("text-[10px] font-mono mt-1", stat.change?.startsWith('+') ? "text-[#00FF41]" : "text-[#71717A]")}>
+                        {stat.change || stat.sub}
+                      </p>
+                   </div>
+                   <stat.icon size={20} className="text-[#1F1F23] group-hover:text-[#00FF41] transition-colors" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+                   <stat.icon size={80} />
+                </div>
+             </div>
+           ))}
+        </div>
+
+        {/* Factors Analysis Chart */}
+        <div className="col-span-12 lg:col-span-8 bg-[#0D0D0F] border border-[#1F1F23] rounded-lg p-6 flex flex-col h-[400px]">
+           <div className="flex items-center justify-between mb-6">
+              <div className="space-y-1">
+                 <h3 className="text-sm font-mono font-bold">FACTOR_EXPOSURE_INDEX</h3>
+                 <p className="text-xs text-[#52525B]">Relative exposure analysis across selected universe</p>
+              </div>
+              <Maximize2 size={16} className="text-[#52525B] cursor-pointer" />
+           </div>
+           
+           <div className="flex-1 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                 <BarChart data={securities}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1F1F23" vertical={false} />
+                    <XAxis 
+                      dataKey="id" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#52525B', fontSize: 10, fontFamily: 'monospace' }}
+                      dy={10}
+                    />
+                    <YAxis 
+                      hide
+                    />
+                    <Tooltip 
+                      cursor={{ fill: '#1F1F23', opacity: 0.4 }}
+                      contentStyle={{ backgroundColor: '#0D0D0F', border: '1px solid #1F1F23', borderRadius: '4px', fontSize: '10px', fontFamily: 'monospace' }}
+                      itemStyle={{ color: '#00FF41' }}
+                    />
+                    <Bar dataKey="score" radius={[2, 2, 0, 0]}>
+                       {securities.map((entry, index) => (
+                         <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#00FF41' : '#00A635'} />
+                       ))}
+                    </Bar>
+                    <Bar dataKey="momentum" radius={[2, 2, 0, 0]}>
+                       {securities.map((entry, index) => (
+                         <Cell key={`cell-m-${index}`} fill="#3B82F6" opacity={0.6} />
+                       ))}
+                    </Bar>
+                 </BarChart>
+              </ResponsiveContainer>
+           </div>
+        </div>
+
+        {/* Real-time Data Grid */}
+        <div className="col-span-12 lg:col-span-4 bg-[#0D0D0F] border border-[#1F1F23] rounded-lg flex flex-col overflow-hidden max-h-[400px]">
+           <div className="p-4 border-b border-[#1F1F23] flex items-center justify-between bg-[#16161A]/50">
+              <span className="text-[10px] font-mono font-bold text-[#71717A]">UNIVERSE_STREAM</span>
+              <div className="flex items-center gap-2">
+                 <span className={cn(
+                   "w-1.5 h-1.5 rounded-full transition-all duration-500",
+                   isLiveMode ? "bg-[#00FF41] shadow-[0_0_8px_rgba(0,255,65,0.6)] animate-pulse" : "bg-red-500"
+                 )} />
+                 <span className="text-[9px] font-mono text-[#71717A]">{isLiveMode ? "REAL_TIME" : "PAUSED"}</span>
+               </div>
+           </div>
+           <div className="flex-1 overflow-y-auto">
+              <table className="w-full text-left">
+                 <thead className="sticky top-0 bg-[#0D0D0F] border-b border-[#1F1F23] z-10">
+                    <tr className="text-[10px] font-mono text-[#52525B]">
+                       <th className="p-3 font-medium">TICKER</th>
+                       <th className="p-3 font-medium text-right">SCORE</th>
+                       <th className="p-3 font-medium text-right">ESG</th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-[#1F1F23] text-xs">
+                    {securities.map((security) => (
+                      <tr 
+                        key={security.id} 
+                        onClick={() => setSelectedSecurity(security)}
+                        className={cn(
+                          "group cursor-pointer transition-all duration-700 ease-out relative",
+                          selectedSecurity?.id === security.id ? "bg-[#1F1F23]" : "hover:bg-[#16161A]",
+                          lastUpdatedId === security.id && "bg-[#00FF41]/10 shadow-[inset_0_0_20px_rgba(0,255,65,0.05)] z-10"
+                        )}
+                      >
+                         <td className="p-3 relative">
+                            {lastUpdatedId === security.id && (
+                              <motion.div 
+                                layoutId="active-indicator"
+                                className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#00FF41]"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.2 }}
+                              />
+                            )}
+                            <div className="flex flex-col">
+                               <span className="font-bold text-[#E4E4E7]">{security.id}</span>
+                               <span className="text-[10px] text-[#52525B] truncate w-24">{security.name}</span>
+                            </div>
+                         </td>
+                         <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                               <motion.span 
+                                 key={`${security.id}-${security.score}`}
+                                 initial={{ color: lastUpdatedId === security.id ? '#00FF41' : '#E4E4E7' }}
+                                 animate={{ color: '#E4E4E7' }}
+                                 transition={{ duration: 1 }}
+                                 className="font-mono text-xs"
+                               >
+                                 {security.score.toFixed(2)}
+                               </motion.span>
+                               {security.momentum > 0.8 ? <ArrowUpRight size={10} className="text-[#00FF41]" /> : <ArrowDownRight size={10} className="text-red-400" />}
+                            </div>
+                         </td>
+                         <td className="p-3 text-right">
+                             <span className={cn(
+                               "px-1.5 py-0.5 rounded text-[9px] font-bold",
+                               security.esg.includes('A') ? "bg-green-500/10 text-green-400" : "bg-yellow-500/10 text-yellow-400"
+                             )}>
+                               {security.esg}
+                             </span>
+                         </td>
+                      </tr>
+                    ))}
+                 </tbody>
+              </table>
+           </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,231 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { 
+  Terminal, 
+  Layers, 
+  BarChart3, 
+  FileText, 
+  History, 
+  Dna, 
+  Database, 
+  Compass,
+  LayoutGrid,
+  Menu,
+  X,
+  Plus,
+  BrainCircuit,
+  BookOpen
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from './lib/utils';
+import { ModuleId } from './types';
+import ChatTerminal from './components/ChatTerminal';
+import UniverseExplorer from './components/UniverseExplorer';
+import StrategyBuilder from './components/StrategyBuilder';
+import MobilePreview from './components/MobilePreview';
+import ApiDocs from './components/ApiDocs';
+
+const MODULES = [
+  { id: 'universe' as ModuleId, name: 'Universe Construction', icon: Layers, description: 'Slice and dice based on geography, sectors, and factors.' },
+  { id: 'strategy' as ModuleId, name: 'Strategy Builder', icon: BrainCircuit, description: 'Personalized investment strategies based on your profile.' },
+  { id: 'docs' as ModuleId, name: 'API Documentation', icon: BookOpen, description: 'Technical specifications for BITA endpoints.' },
+  { id: 'mobile_preview' as ModuleId, name: 'Mobile App View', icon: Compass, description: 'Visualize how the BITA intelligence looks on a mobile device.' },
+];
+
+export default function App() {
+  const [activeModule, setActiveModule] = useState<ModuleId>('universe');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex h-screen w-full bg-[#0A0A0B] text-[#E4E4E7] font-sans selection:bg-[#00FF41] selection:text-black overflow-hidden">
+      {/* Sidebar */}
+      <aside 
+        className={cn(
+          "relative flex flex-col border-r border-[#1F1F23] bg-[#0D0D0F] transition-all duration-300 z-50",
+          isSidebarOpen ? "w-72" : "w-16"
+        )}
+      >
+        <div className="p-4 flex items-center gap-3 border-bottom border-[#1F1F23]">
+          <div className="w-8 h-8 rounded-sm bg-[#00FF41] flex items-center justify-center text-black">
+            <Terminal size={20} />
+          </div>
+          {isSidebarOpen && (
+            <span className="font-mono font-bold tracking-tighter text-xl">BITA COMMAND</span>
+          )}
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
+          {MODULES.map((module) => (
+            <button
+              key={module.id}
+              onClick={() => setActiveModule(module.id)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all group relative overflow-hidden",
+                activeModule === module.id 
+                  ? "bg-[#1F1F23] text-white shadow-[0_0_15px_rgba(0,255,65,0.1)]" 
+                  : "text-[#71717A] hover:bg-[#16161A] hover:text-[#E4E4E7]"
+              )}
+            >
+              <module.icon className={cn("shrink-0", activeModule === module.id ? "text-[#00FF41]" : "text-[#71717A] group-hover:text-[#00FF41]")} size={18} />
+              {isSidebarOpen && (
+                <div className="flex flex-col items-start leading-none gap-0.5">
+                  <span className="text-sm font-medium">{module.name}</span>
+                </div>
+              )}
+              {activeModule === module.id && (
+                <motion.div 
+                  layoutId="active-nav"
+                  className="absolute left-0 w-1 h-2/3 bg-[#00FF41] rounded-r-full"
+                />
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-[#1F1F23]">
+          {isSidebarOpen ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-[11px] font-mono text-[#52525B]">
+                <span>SYSTEM STATUS</span>
+                <span className="text-[#00FF41] flex items-center gap-1">
+                  <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
+                  ONLINE
+                </span>
+              </div>
+              <div className="text-[11px] font-mono text-[#52525B]">
+                {currentTime.toLocaleTimeString()} - {currentTime.toLocaleDateString()}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#00FF41] animate-pulse" />
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col relative overflow-hidden">
+        {/* Header */}
+        <header className="h-14 border-b border-[#1F1F23] bg-[#0D0D0F]/80 backdrop-blur-md flex items-center justify-between px-6 z-40">
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-1 hover:bg-[#1F1F23] rounded transition-colors text-[#71717A] hover:text-white"
+            >
+              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <div className="flex items-center gap-2 text-xs font-mono text-[#71717A]">
+              <Compass size={14} />
+              <span>TERMINAL / {MODULES.find(m => m.id === activeModule)?.name?.toUpperCase()}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+             <div className="hidden lg:flex items-center gap-3 px-3 py-1 bg-[#16161A] border border-[#1F1F23] rounded text-[11px] font-mono">
+                <span className="text-[#52525B]">INSTITUTIONAL ACCESS:</span>
+                <span className="text-[#00FF41]">BITA_INDEX_01</span>
+             </div>
+             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1F1F23] to-[#0A0A0B] border border-[#1F1F23] flex items-center justify-center">
+                <span className="text-[10px] font-bold">JD</span>
+             </div>
+          </div>
+        </header>
+
+        {/* Dynamic Viewport */}
+        <div className="flex-1 flex overflow-hidden lg:flex-row flex-col">
+          {/* Main Visualizer Area */}
+          <div className="flex-1 overflow-y-auto bg-[#050506] relative">
+            <AnimatePresence mode="wait">
+              {activeModule === 'universe' ? (
+                <motion.div
+                  key="universe"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-8 h-full"
+                >
+                  <UniverseExplorer />
+                </motion.div>
+              ) : activeModule === 'strategy' ? (
+                <motion.div
+                  key="strategy"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-8 h-full"
+                >
+                  <StrategyBuilder />
+                </motion.div>
+              ) : activeModule === 'mobile_preview' ? (
+                <motion.div
+                  key="mobile"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-8 h-full"
+                >
+                  <MobilePreview />
+                </motion.div>
+              ) : activeModule === 'docs' ? (
+                <motion.div
+                  key="docs"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-8 h-full"
+                >
+                  <ApiDocs />
+                </motion.div>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                   <div className="text-center space-y-4">
+                      <LayoutGrid className="mx-auto text-[#1F1F23]" size={64} strokeWidth={1} />
+                      <h2 className="text-xl font-mono text-[#E4E4E7]">MODULE_UNDER_CONSTRUCTION</h2>
+                      <p className="text-[#71717A] max-w-sm mx-auto text-sm">
+                        This API module is being deployed to your current endpoint. 
+                        Please utilize the Chat Terminal for preliminary data calls.
+                      </p>
+                      <button 
+                        onClick={() => setActiveModule('universe')}
+                        className="px-4 py-2 bg-[#00FF41]/10 text-[#00FF41] border border-[#00FF41]/20 rounded-md text-xs font-mono hover:bg-[#00FF41]/20 transition-all"
+                      >
+                         RETURN TO UNIVERSE EXPLORER
+                      </button>
+                   </div>
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Chat Terminal Sidebar */}
+          <div className="lg:w-[450px] w-full border-l border-[#1F1F23] bg-[#0D0D0F] flex flex-col h-full">
+            <div className="p-4 border-b border-[#1F1F23] flex items-center justify-between">
+               <div className="flex items-center gap-2">
+                 <div className="w-2 h-2 rounded-full bg-[#00FF41]" />
+                 <span className="text-xs font-mono font-bold">BITA ASSISTANT</span>
+               </div>
+               <span className="text-[10px] font-mono text-[#52525B]">v4.2.0-HYBRID</span>
+            </div>
+            <ChatTerminal />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+

@@ -9,9 +9,9 @@ export async function getEmbedding(text: string): Promise<number[]> {
   try {
     const result = await ai.models.embedContent({
       model: "gemini-embedding-2-preview",
-      content: { parts: [{ text }] },
+      contents: [{ parts: [{ text }] }],
     });
-    return result.embedding.values || [];
+    return result.embeddings?.[0]?.values || [];
   } catch (error) {
     console.error("Embedding generation failed:", error);
     return [];

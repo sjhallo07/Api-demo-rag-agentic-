@@ -61,6 +61,30 @@ export default function MobilePreview() {
               <i className="fas fa-paper-plane text-[#00FF41] text-xs"></i>
             </div>
           </div>
+
+          {/* Bottom Navigation (FontAwesome) */}
+          <div className="mt-6 flex items-center justify-around pb-2 border-t border-white/5 pt-3">
+             <div className="flex flex-col items-center gap-1 text-[#00FF41]">
+                <i className="fas fa-house text-sm"></i>
+                <span className="text-[8px] font-bold">HOME</span>
+             </div>
+             <div className="flex flex-col items-center gap-1 text-[#52525B]">
+                <i className="fas fa-chart-line text-sm"></i>
+                <span className="text-[8px]">MKTS</span>
+             </div>
+             <div className="flex flex-col items-center gap-1 text-[#52525B]">
+                <i className="fas fa-briefcase text-sm"></i>
+                <span className="text-[8px]">PORT</span>
+             </div>
+             <div className="flex flex-col items-center gap-1 text-[#52525B]">
+                <i className="fas fa-microchip text-sm"></i>
+                <span className="text-[8px]">AUTO</span>
+             </div>
+             <div className="flex flex-col items-center gap-1 text-[#52525B]">
+                <i className="fas fa-gear text-sm"></i>
+                <span className="text-[8px]">SET</span>
+             </div>
+          </div>
         </div>
       </div>
 

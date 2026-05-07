@@ -11,7 +11,10 @@ import {
   ShieldCheck,
   TrendingUp,
   Globe,
-  X
+  X,
+  FileText,
+  FileCode,
+  Settings2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -36,11 +39,23 @@ export default function UniverseExplorer() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSecurity, setSelectedSecurity] = useState<Security | null>(null);
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   const [isLiveMode, setIsLiveMode] = useState(true);
   const [lastUpdatedId, setLastUpdatedId] = useState<string | null>(null);
   const [activeThemeVisualization, setActiveThemeVisualization] = useState<string | null>(null);
   const [activeThemeFilter, setActiveThemeFilter] = useState<string | null>(null);
+  const [hoveredTheme, setHoveredTheme] = useState<string | null>(null);
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(['ticker', 'score', 'esg']);
+
+  const COLUMNS = [
+    { id: 'ticker', label: 'TICKER' },
+    { id: 'pe', label: 'P/E_RATIO' },
+    { id: 'marketCap', label: 'MARKET_CAP' },
+    { id: 'score', label: 'SCORE' },
+    { id: 'esg', label: 'ESG' },
+  ];
 
   const SECTORS = ["Technology", "Semiconductors", "Consumer", "Automotive", "Finance", "Healthcare", "Energy"];
   const THEMES = ["Consumer Tech", "Enterprise Software", "Lithography", "AI/GPU", "Luxury", "EV Transition", "Global Banking", "Personal Care"];
@@ -121,6 +136,73 @@ export default function UniverseExplorer() {
     setSelectedThemes([]);
     setActiveThemeFilter(null);
     performSearch(query, { themes: [], sector: selectedSector });
+  };
+
+  const exportToCSV = () => {
+    const headers = ["Ticker", "Name", "Sector", "Theme", "Score", "Momentum", "ESG"];
+    const rows = filteredSecurities.map(s => [
+      s.id,
+      s.name,
+      s.sector,
+      s.theme,
+      s.score.toFixed(4),
+      s.momentum.toFixed(4),
+      s.esg
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `bita_universe_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowExportDropdown(false);
+  };
+
+  const exportToPDF = () => {
+    // Simulated PDF export - in a real app would use jsPDF
+    console.log("Generating PDF report for current universe view...");
+    const reportWindow = window.open('', '_blank');
+    if (reportWindow) {
+      reportWindow.document.write(`
+        <html>
+          <head>
+            <title>BITA Universe Report</title>
+            <style>
+              body { font-family: monospace; background: #000; color: #00FF41; padding: 40px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #1F1F23; padding: 10px; text-align: left; }
+              h1 { border-bottom: 2px solid #00FF41; padding-bottom: 10px; }
+            </style>
+          </head>
+          <body>
+            <h1>BITA_UNIVERSE_REPORT [${new Date().toLocaleString()}]</h1>
+            <p>ACTIVE_FILTERS: ${selectedSector || 'NONE'} | ${selectedThemes.join(', ') || 'NONE'}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>TICKER</th><th>NAME</th><th>SECTOR</th><th>SCORE</th><th>ESG</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredSecurities.map(s => `
+                  <tr>
+                    <td>${s.id}</td><td>${s.name}</td><td>${s.sector}</td><td>${s.score.toFixed(2)}</td><td>${s.esg}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `);
+      reportWindow.document.close();
+      reportWindow.print();
+    }
+    setShowExportDropdown(false);
   };
 
   const filteredSecurities = activeThemeFilter 
@@ -321,6 +403,8 @@ export default function UniverseExplorer() {
                   {THEMES.map(theme => (
                     <button
                       key={theme}
+                      onMouseEnter={() => setHoveredTheme(theme)}
+                      onMouseLeave={() => setHoveredTheme(null)}
                       onClick={() => {
                         const newThemes = selectedThemes.includes(theme)
                           ? selectedThemes.filter(t => t !== theme)
@@ -364,10 +448,86 @@ export default function UniverseExplorer() {
           >
             <RefreshCcw size={16} className={isLoading ? "animate-spin" : ""} />
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#00FF41] text-black rounded-md text-xs font-bold hover:bg-[#00E53B] transition-all">
-            <Download size={14} />
-            EXPORT_BASKET
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#00FF41] text-black rounded-md text-xs font-bold hover:bg-[#00E53B] transition-all"
+            >
+              <Download size={14} />
+              EXPORT_DATA
+            </button>
+            
+            {showExportDropdown && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowExportDropdown(false)} />
+                <div className="absolute top-full right-0 mt-2 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200">
+                  <button
+                    onClick={() => {
+                      console.log("Exporting basket...");
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#E4E4E7] hover:bg-[#16161A] transition-colors flex items-center gap-2"
+                  >
+                    <Download size={12} className="text-[#00FF41]" />
+                    EXPORT_BASKET
+                  </button>
+                  <button
+                    onClick={exportToCSV}
+                    className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#E4E4E7] hover:bg-[#16161A] transition-colors flex items-center gap-2"
+                  >
+                    <FileText size={12} className="text-[#3B82F6]" />
+                    DOWNLOAD_CSV
+                  </button>
+                  <button
+                    onClick={exportToPDF}
+                    className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#E4E4E7] hover:bg-[#16161A] transition-colors flex items-center gap-2"
+                  >
+                    <FileCode size={12} className="text-orange-400" />
+                    PRINT_PDF_REPORT
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          
+          <div className="relative">
+            <button 
+              onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+              className="p-2 bg-[#0D0D0F] border border-[#1F1F23] rounded-md text-[#71717A] hover:text-white transition-all"
+            >
+              <Settings2 size={16} />
+            </button>
+            
+            {showColumnDropdown && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowColumnDropdown(false)} />
+                <div className="absolute top-full right-0 mt-2 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="px-3 py-1.5 text-[8px] font-mono text-[#52525B] border-b border-[#1F1F23] mb-1">
+                    CONFIGURE_COLUMNS
+                  </div>
+                  {COLUMNS.map(col => (
+                    <button
+                      key={col.id}
+                      onClick={() => {
+                        const newCols = visibleColumns.includes(col.id)
+                          ? visibleColumns.filter(c => c !== col.id)
+                          : [...visibleColumns, col.id];
+                        // Ensure at least ticker is visible
+                        if (newCols.length > 0) setVisibleColumns(newCols);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded text-[10px] font-mono transition-colors flex items-center justify-between",
+                        visibleColumns.includes(col.id) ? "text-[#00FF41]" : "text-[#71717A] hover:bg-[#16161A] hover:text-[#E4E4E7]"
+                      )}
+                    >
+                      {col.label}
+                      {visibleColumns.includes(col.id) && <div className="w-1 h-1 rounded-full bg-[#00FF41]" />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
       )}
@@ -379,6 +539,8 @@ export default function UniverseExplorer() {
             <motion.div
               layoutId={`theme-card-${theme}`}
               key={theme}
+              onMouseEnter={() => setHoveredTheme(theme)}
+              onMouseLeave={() => setHoveredTheme(null)}
               whileHover={{ y: -4, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => {
@@ -542,74 +704,107 @@ export default function UniverseExplorer() {
               <table className="w-full text-left">
                  <thead className="sticky top-0 bg-[#0D0D0F] border-b border-[#1F1F23] z-10">
                     <tr className="text-[10px] font-mono text-[#52525B]">
-                       <th className="p-3 font-medium">TICKER</th>
-                       <th className="p-3 font-medium text-right">SCORE</th>
-                       <th className="p-3 font-medium text-right">ESG</th>
+                        {visibleColumns.includes('ticker') && <th className="p-3 font-medium">TICKER</th>}
+                        {visibleColumns.includes('pe') && <th className="p-3 font-medium text-right">P/E</th>}
+                        {visibleColumns.includes('marketCap') && <th className="p-3 font-medium text-right">MCAP</th>}
+                        {visibleColumns.includes('score') && <th className="p-3 font-medium text-right">SCORE</th>}
+                        {visibleColumns.includes('esg') && <th className="p-3 font-medium text-right">ESG</th>}
                     </tr>
                  </thead>
-                 <tbody className="divide-y divide-[#1F1F23] text-xs">
-                    {filteredSecurities.map((security) => (
-                      <tr 
-                        key={security.id} 
-                        onClick={() => setSelectedSecurity(security)}
-                        className={cn(
-                          "group cursor-pointer transition-all duration-700 ease-out relative",
-                          selectedSecurity?.id === security.id ? "bg-[#1F1F23]" : "hover:bg-[#16161A]",
-                          lastUpdatedId === security.id && "bg-[#00FF41]/10 shadow-[inset_0_0_20px_rgba(0,255,65,0.05)] z-10"
-                        )}
-                      >
-                         <td className="p-3 relative">
-                            {lastUpdatedId === security.id && (
-                              <motion.div 
-                                layoutId="active-indicator"
-                                className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#00FF41]"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ duration: 0.2 }}
-                              />
-                            )}
-                            <div className="flex flex-col">
-                               <span className="font-bold text-[#E4E4E7]">{security.id}</span>
-                               <span className="text-[10px] text-[#52525B] truncate w-24">{security.name}</span>
-                            </div>
-                         </td>
-                         <td className="p-3 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                               <motion.span 
-                                 key={`${security.id}-${security.score}`}
-                                 initial={{ color: lastUpdatedId === security.id ? '#00FF41' : '#E4E4E7' }}
-                                 animate={{ color: '#E4E4E7' }}
-                                 transition={{ duration: 1 }}
-                                 className="font-mono text-xs"
-                               >
-                                 {security.score.toFixed(2)}
-                               </motion.span>
-                               {security.momentum > 0.8 ? <ArrowUpRight size={10} className="text-[#00FF41]" /> : <ArrowDownRight size={10} className="text-red-400" />}
-                            </div>
-                         </td>
-                         <td className="p-3 text-right">
-                             <div className="flex flex-col items-end gap-1">
-                               <span className={cn(
-                                 "px-1.5 py-0.5 rounded text-[9px] font-bold",
-                                 security.esg.includes('A') ? "bg-green-500/10 text-green-400" : "bg-yellow-500/10 text-yellow-400"
-                               )}>
-                                 {security.esg}
-                               </span>
-                               <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addAssetToPortfolio(security, 10);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-1 px-1.5 bg-[#00FF41]/10 text-[#00FF41] border border-[#00FF41]/20 rounded-[2px] transition-all text-[8px] font-mono hover:bg-[#00FF41] hover:text-black flex items-center gap-1"
-                               >
-                                  BUY_10
-                               </button>
-                             </div>
-                         </td>
-                      </tr>
-                    ))}
-                 </tbody>
-              </table>
+                  <tbody className="divide-y divide-[#1F1F23] text-xs">
+                    {filteredSecurities.map((security) => {
+                      const isThemeHighlighted = security.theme === hoveredTheme || security.theme === activeThemeFilter;
+                      
+                      return (
+                        <tr 
+                          key={security.id} 
+                          onClick={() => setSelectedSecurity(security)}
+                          className={cn(
+                            "group cursor-pointer transition-all duration-700 ease-out relative",
+                            selectedSecurity?.id === security.id ? "bg-[#1F1F23]" : "hover:bg-[#16161A]",
+                            isThemeHighlighted && "bg-[#00FF41]/5 border-l-2 border-l-[#00FF41] shadow-[inset_10px_0_15px_-10px_rgba(0,255,65,0.1)]",
+                            lastUpdatedId === security.id && "bg-[#00FF41]/10 shadow-[inset_0_0_20px_rgba(0,255,65,0.05)] z-10 font-bold"
+                          )}
+                        >
+                           {visibleColumns.includes('ticker') && (
+                             <td className="p-3 relative">
+                                {(lastUpdatedId === security.id || isThemeHighlighted) && (
+                                  <motion.div 
+                                    layoutId={`active-indicator-${security.id}`}
+                                    className={cn(
+                                      "absolute left-0 top-0 bottom-0 w-0.5",
+                                      lastUpdatedId === security.id ? "bg-[#00FF41]" : "bg-[#00FF41]/40"
+                                    )}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ duration: 0.2 }}
+                                  />
+                                )}
+                                <div className="flex flex-col">
+                                   <span className={cn(
+                                     "font-bold transition-colors",
+                                     isThemeHighlighted ? "text-[#00FF41]" : "text-[#E4E4E7]"
+                                   )}>
+                                     {security.id}
+                                   </span>
+                                   <span className="text-[10px] text-[#52525B] truncate w-24">
+                                     {security.name}
+                                   </span>
+                                </div>
+                             </td>
+                           )}
+                           {visibleColumns.includes('pe') && (
+                             <td className="p-3 text-right font-mono text-[#E4E4E7]">
+                               {security.pe?.toFixed(1) || '—'}
+                             </td>
+                           )}
+                           {visibleColumns.includes('marketCap') && (
+                             <td className="p-3 text-right font-mono text-[#E4E4E7]">
+                               {security.marketCap || '—'}
+                             </td>
+                           )}
+                           {visibleColumns.includes('score') && (
+                             <td className="p-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                   <motion.span 
+                                     key={`${security.id}-${security.score}`}
+                                     initial={{ color: (lastUpdatedId === security.id || isThemeHighlighted) ? '#00FF41' : '#E4E4E7' }}
+                                     animate={{ color: isThemeHighlighted ? '#00FF41' : '#E4E4E7' }}
+                                     transition={{ duration: 1 }}
+                                     className="font-mono text-xs"
+                                   >
+                                     {security.score.toFixed(2)}
+                                   </motion.span>
+                                   {security.momentum > 0.8 ? <ArrowUpRight size={10} className="text-[#00FF41]" /> : <ArrowDownRight size={10} className="text-red-400" />}
+                                </div>
+                             </td>
+                           )}
+                           {visibleColumns.includes('esg') && (
+                             <td className="p-3 text-right">
+                                 <div className="flex flex-col items-end gap-1">
+                                   <span className={cn(
+                                     "px-1.5 py-0.5 rounded text-[9px] font-bold",
+                                     security.esg.includes('A') ? "bg-green-500/10 text-green-400" : "bg-yellow-500/10 text-yellow-400"
+                                   )}>
+                                     {security.esg}
+                                   </span>
+                                   <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addAssetToPortfolio(security, 10);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 px-1.5 bg-[#00FF41]/10 text-[#00FF41] border border-[#00FF41]/20 rounded-[2px] transition-all text-[8px] font-mono hover:bg-[#00FF41] hover:text-black flex items-center gap-1"
+                                   >
+                                      BUY_10
+                                   </button>
+                                 </div>
+                             </td>
+                           )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+               </table>
            </div>
         </div>
 

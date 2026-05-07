@@ -212,7 +212,7 @@ export default function App() {
         </AnimatePresence>
 
         {/* Dynamic Viewport */}
-        <div className="flex-1 flex overflow-hidden lg:flex-row flex-col">
+        <div className="flex-1 flex overflow-hidden lg:flex-row flex-col pb-16 lg:pb-0">
           {/* Main Visualizer Area */}
           <div className="flex-1 overflow-y-auto bg-[#050506] relative">
             <AnimatePresence mode="wait">
@@ -304,7 +304,7 @@ export default function App() {
           </div>
 
           {/* Chat Terminal Sidebar */}
-          <div className="lg:w-[450px] w-full border-l border-[#1F1F23] bg-[#0D0D0F] flex flex-col h-full">
+          <div className="lg:w-[450px] w-full border-l border-[#1F1F23] bg-[#0D0D0F] flex flex-col h-full lg:pb-0 pb-16">
             <div className="p-4 border-b border-[#1F1F23] flex items-center justify-between">
                <div className="flex items-center gap-2">
                  <div className="w-2 h-2 rounded-full bg-[#00FF41]" />
@@ -314,6 +314,37 @@ export default function App() {
             </div>
             <ChatTerminal />
           </div>
+        </div>
+
+        {/* Mobile Navbar (FontAwesome) */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0D0D0F] border-t border-[#1F1F23] flex items-center justify-around px-4 z-[60] backdrop-blur-md bg-opacity-90">
+          {MODULES.slice(0, 5).map((module) => (
+            <button
+              key={module.id}
+              onClick={() => setActiveModule(module.id)}
+              className={cn(
+                "flex flex-col items-center gap-1 transition-all",
+                activeModule === module.id ? "text-[#00FF41]" : "text-[#52525B]"
+              )}
+            >
+              <i className={cn(
+                "text-lg",
+                module.id === 'universe' ? "fas fa-layer-group" :
+                module.id === 'analytics' ? "fas fa-chart-pie" :
+                module.id === 'strategy' ? "fas fa-microchip" :
+                module.id === 'admin' ? "fas fa-user-shield" :
+                module.id === 'docs' ? "fas fa-book-bookmark" : "fas fa-circle"
+              )}></i>
+              <span className="text-[8px] font-mono whitespace-nowrap">{module.id.toUpperCase()}</span>
+            </button>
+          ))}
+          <button
+             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+             className="flex flex-col items-center gap-1 text-[#52525B]"
+          >
+             <i className="fas fa-bars text-lg"></i>
+             <span className="text-[8px] font-mono">MENU</span>
+          </button>
         </div>
       </main>
     </div>

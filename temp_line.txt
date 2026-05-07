@@ -1,0 +1,3 @@
+53:    { id: 'ticker', label: 'TICKER' },
+188:                  <th>TICKER</th><th>NAME</th><th>SECTOR</th><th>SCORE</th><th>ESG</th>
+707:                       <th className="p-3 font-medium">TICKER</th>

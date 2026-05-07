@@ -28,7 +28,37 @@ export interface ChatMessage {
   attachments?: AttachmentMetadata[]; // Detailed metadata for thumbnails/icons
 }
 
-export type ModuleId = "universe" | "analytics" | "backtesting" | "thematics" | "factsheets" | "data" | "strategy" | "mobile_preview" | "docs" | "admin";
+export type PlanType = "standard" | "premium";
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string;
+  isVerified: boolean;
+  deviceId?: string;
+  plan: PlanType;
+  joinedAt: string;
+}
+
+export interface AuthState {
+  user: UserProfile | null;
+  token: string | null;
+  isLoading: boolean;
+}
+
+export type ModuleId = "universe" | "analytics" | "backtesting" | "thematics" | "factsheets" | "data" | "strategy" | "mobile_preview" | "docs" | "admin" | "payments" | "profile" | "market_mastery";
+
+export interface StrategyTemplate {
+  id: string;
+  name: string;
+  profile: {
+    sectors: string[];
+    horizon: 'short' | 'long' | null;
+    risk: 'aggressive' | 'passive' | null;
+  };
+  createdAt: string;
+}
 
 export interface UniverseQueryResponse {
   status: string;

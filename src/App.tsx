@@ -19,11 +19,16 @@ import {
   Plus,
   BrainCircuit,
   BookOpen,
-  ShieldAlert
+  ShieldAlert,
+  CreditCard,
+  LogOut,
+  User as UserIcon,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { ModuleId } from './types';
+import { ModuleId, UserProfile } from './types';
 import ChatTerminal from './components/ChatTerminal';
 import UniverseExplorer from './components/UniverseExplorer';
 import StrategyBuilder from './components/StrategyBuilder';
@@ -31,17 +36,24 @@ import PortfolioDashboard from './components/PortfolioDashboard';
 import AdminIntelligence from './components/AdminIntelligence';
 import MobilePreview from './components/MobilePreview';
 import ApiDocs from './components/ApiDocs';
+import MarketMastery from './components/MarketMastery';
+import LandingPage from './components/LandingPage';
+import AuthModule from './components/AuthModule';
+import PaymentModule from './components/PaymentModule';
+import { SESSION_KEY } from './constants';
 
 const MODULES = [
   { id: 'universe' as ModuleId, name: 'Universe Construction', icon: Layers, description: 'Slice and dice based on geography, sectors, and factors.' },
   { id: 'analytics' as ModuleId, name: 'Portfolio Dashboard', icon: BarChart3, description: 'Interactive visualization of portfolio allocation, performance, and ESG.' },
   { id: 'strategy' as ModuleId, name: 'Strategy Builder', icon: BrainCircuit, description: 'Personalized investment strategies based on your profile.' },
+  { id: 'payments' as ModuleId, name: 'Billing Infrastructure', icon: CreditCard, description: 'Manage institutional subscription and billing.' },
   { id: 'admin' as ModuleId, name: 'Admin Intelligence', icon: ShieldAlert, description: 'Manage financial knowledge base and agent learning tokens.' },
+  { id: 'market_mastery' as ModuleId, name: 'Market Mastery', icon: BookOpen, description: 'Insights on financial sectors, careers, and global markets.' },
   { id: 'docs' as ModuleId, name: 'API Documentation', icon: BookOpen, description: 'Technical specifications for BITA endpoints.' },
   { id: 'mobile_preview' as ModuleId, name: 'Mobile App View', icon: Compass, description: 'Visualize how the BITA intelligence looks on a mobile device.' },
 ];
 
-export default function App() {
+function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void }) {
   const [activeModule, setActiveModule] = useState<ModuleId>('universe');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -53,14 +65,13 @@ export default function App() {
   }, []);
 
   const handleOpenTermux = () => {
-    // Attempt to open Termux using Android Intent
-    // This will work on Android devices with Termux installed
     const intentUrl = "intent://#Intent;scheme=termux;package=com.termux;end";
     window.location.href = intentUrl;
   };
 
   return (
-    <div className="flex h-screen w-full bg-[#0A0A0B] text-[#E4E4E7] font-sans selection:bg-[#00FF41] selection:text-black overflow-hidden">
+    <div className="flex h-screen w-full bg-[#0A0A0B] text-[#E4E4E7] font-sans selection:bg-[#00FF41] selection:text-black overflow-hidden animate-in fade-in duration-700">
+      {/* Sidebar (Rest of logic remains same, just moved to component) */}
       {/* Sidebar */}
       <aside 
         className={cn(
@@ -162,11 +173,18 @@ export default function App() {
                 DOCS_VER_1.0
              </button>
              <div className="hidden lg:flex items-center gap-3 px-3 py-1 bg-[#16161A] border border-[#1F1F23] rounded text-[11px] font-mono">
-                <span className="text-[#52525B]">INSTITUTIONAL ACCESS:</span>
-                <span className="text-[#00FF41]">BITA_INDEX_01</span>
+                <span className="text-[#52525B]">TERMINAL:</span>
+                <span className="text-[#00FF41]">{user.name.toUpperCase()}</span>
              </div>
-             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1F1F23] to-[#0A0A0B] border border-[#1F1F23] flex items-center justify-center">
-                <span className="text-[10px] font-bold">JD</span>
+             <button 
+                onClick={onLogout}
+                className="p-2 hover:bg-red-500/10 hover:text-red-400 rounded transition-colors text-[#52525B]"
+                title="EXIT_SIGNAL"
+             >
+                <LogOut size={18} />
+             </button>
+             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1F1F23] to-[#0A0A0B] border border-[#1F1F23] flex items-center justify-center overflow-hidden">
+                {user.avatar ? <img src={user.avatar} alt="avatar" /> : <UserIcon size={14} />}
              </div>
           </div>
         </header>
@@ -249,6 +267,17 @@ export default function App() {
                 >
                   <StrategyBuilder />
                 </motion.div>
+              ) : activeModule === 'payments' ? (
+                <motion.div
+                  key="payments"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-8 h-full"
+                >
+                  <PaymentModule />
+                </motion.div>
               ) : activeModule === 'admin' ? (
                 <motion.div
                   key="admin"
@@ -270,6 +299,17 @@ export default function App() {
                   className="p-8 h-full"
                 >
                   <MobilePreview />
+                </motion.div>
+              ) : activeModule === 'market_mastery' ? (
+                <motion.div
+                  key="market_mastery"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-8 h-full"
+                >
+                  <MarketMastery />
                 </motion.div>
               ) : activeModule === 'docs' ? (
                 <motion.div
@@ -348,6 +388,72 @@ export default function App() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [view, setView] = useState<'landing' | 'auth'>('landing');
+
+  useEffect(() => {
+    const savedToken = localStorage.getItem(SESSION_KEY);
+    if (savedToken) {
+      // Future: Real token verification
+      setUser({
+        id: 'u_123',
+        email: 'john@bita.com',
+        name: 'John Doe',
+        isVerified: true,
+        plan: 'standard',
+        joinedAt: new Date().toISOString()
+      });
+    }
+    setIsLoading(false);
+  }, []);
+
+  const handleAuthSuccess = (token: string, userData: UserProfile) => {
+    localStorage.setItem(SESSION_KEY, token);
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(SESSION_KEY);
+    setUser(null);
+    setView('landing');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full bg-[#050505] flex items-center justify-center">
+        <div className="w-12 h-12 border-2 border-[#00FF41] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Dashboard user={user} onLogout={handleLogout} />;
+  }
+
+  return (
+    <AnimatePresence mode="wait">
+      {view === 'landing' ? (
+        <LandingPage key="landing" onGetStarted={() => setView('auth')} />
+      ) : (
+        <div key="auth" className="min-h-screen bg-[#050505] flex items-center justify-center p-6 relative">
+          <div className="fixed inset-0 bg-[linear-gradient(to_right,#16161A_1px,transparent_1px),linear-gradient(to_bottom,#16161A_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+          <div className="relative z-10 w-full max-w-md">
+            <AuthModule onSuccess={handleAuthSuccess} />
+          </div>
+          <button 
+            onClick={() => setView('landing')}
+            className="absolute top-6 left-6 text-xs text-[#52525B] hover:text-[#00FF41] font-mono flex items-center gap-2"
+          >
+            <ArrowLeft size={14} /> EXIT_AUTH_GATEWAY
+          </button>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 

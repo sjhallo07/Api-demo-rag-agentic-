@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
+import NeuralHealth from './NeuralHealth';
 import { getKnowledgeBase, addInsight, FinancialInsight } from '../services/knowledgeService';
 
 export default function AdminIntelligence() {
@@ -61,6 +62,7 @@ export default function AdminIntelligence() {
 
   return (
     <div className="space-y-6">
+      <NeuralHealth />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded bg-[#00FF41]/10 border border-[#00FF41]/20 flex items-center justify-center">
@@ -268,10 +270,33 @@ export default function AdminIntelligence() {
               </div>
               <p className="text-[10px] text-[#A1A1AA] leading-relaxed mb-4 font-mono">
                  The BITA Agent utilizes semantic RAG to improve investment signals. As you inject more institutional knowledge, 
-                 the model\'s ability to identify thematic alpha increases.
+                 the model's ability to identify thematic alpha increases.
               </p>
               <div className="p-3 bg-black/40 border border-[#00FF41]/10 rounded font-mono text-[9px] text-[#00FF41]/70">
                  PROMPT: "Integrate latest ECB minutes into the sentiment vector."
+              </div>
+           </div>
+
+           <div className="bg-[#0D0D0F] border border-[#1F1F23] p-6 rounded-lg space-y-4">
+              <div className="flex items-center gap-3">
+                 <Clock className="text-[#3B82F6]" size={18} />
+                 <h3 className="text-xs font-mono font-bold text-white uppercase tracking-widest">User_Access_Audit</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="p-4 bg-black border border-[#1F1F23] rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[9px] font-mono text-[#71717A]">PLAN:</span>
+                    <span className="text-[9px] font-mono text-[#00FF41] font-bold">STANDARD_ACCESS</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-mono text-[#71717A]">HISTORY_RETENTION:</span>
+                    <span className="text-[9px] font-mono text-white">48_HOURS</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-[#52525B] leading-relaxed font-mono">
+                  Standard users (Registered &lt; 7 days) are limited to basic sector summaries. 
+                  Upgrade to <span className="text-[#00FF41]">PREMIUM</span> for full historical data and "Flippener" tool access.
+                </p>
               </div>
            </div>
         </div>

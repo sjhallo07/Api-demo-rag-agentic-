@@ -1,56 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { BookOpen, Code2, Terminal, Play, CheckCircle2, XCircle, Loader2, Globe } from 'lucide-react';
+import { BookOpen, Code2, Terminal, Play, CheckCircle2, XCircle, Loader2, Globe, Search } from 'lucide-react';
 
-const DOCS_MD = `# BITA Intelligence API Documentation [v1.0]
+const DOCS_HEADER = `# BITA Intelligence API Documentation [v1.0]
 
 This document outlines the core functional modules and API specifications for the BITA Financial Intelligence Terminal. All requests are handled via JSON over HTTPS.
+`;
 
----
-
-## 1. Reference Data API
+const DOCS_SECTIONS = [
+  {
+    id: 'reference',
+    title: '1. Reference Data API',
+    content: `## 1. Reference Data API
 **Endpoint:** \`GET /api/reference-data\`
 **Description:** The foundational layer providing basic static and dynamic metadata for all financial instruments.
 - **Use Cases:** Instrument lookup, catalog population, identifier mapping (ISIN, Ticker, Currency).
 - **Metadata:** Ticker, Name, Sector, Country, Currency, Asset Class.
-
-## 2. Thematics API
+`
+  },
+  {
+    id: 'thematics',
+    title: '2. Thematics API',
+    content: `## 2. Thematics API
 **Endpoint:** \`GET /api/thematics\`
 **Description:** Groups assets based on macro-economic trends and investment narratives.
 - **Use Cases:** Thematic portfolio construction, exposure analysis to megatrends (AI, Clean Energy, ESG).
 - **Data Points:** Relevance scores, thematic constituents, thematic weights.
-
-## 3. Investment Universe Construction API
+`
+  },
+  {
+    id: 'universe',
+    title: '3. Investment Universe Construction API',
+    content: `## 3. Investment Universe Construction API
 **Endpoint:** \`POST /api/universe/search\`
 **Description:** Rule-based filtering engine to create specialized investable sub-sets.
 - **Use Cases:** ESG exclusions (e.g., Tabaco), Geography filtering (e.g., Large Cap Europe), Watchlist automation.
 - **Engine:** Supports complex logical operators (EQUALS, GREATER_THAN, IN) on multi-factor data.
-
-## 4. Analytics API
+`
+  },
+  {
+    id: 'analytics',
+    title: '4. Analytics API',
+    content: `## 4. Analytics API
 **Endpoint:** \`GET /api/analytics/portfolio\`
 **Description:** High-performance calculation engine for risk and performance metrics.
 - **Use Cases:** Volatility analysis, Sharpe Ratio, Beta correlation, Tracking Error.
 - **Output:** KPI summaries and comparative benchmark series.
-
-## 5. Backtesting API
+`
+  },
+  {
+    id: 'backtesting',
+    title: '5. Backtesting API',
+    content: `## 5. Backtesting API
 **Endpoint:** \`POST /api/backtest\`
 **Description:** Historical simulation engine for testing multi-factor investment strategies.
 - **Use Cases:** Portfolio simulation, Stress testing (e.g., COVID-19 impact), Rebalancing optimization.
 - **Output:** Equity curves, Drawdown series, and periodized return matrices.
-
-## 6. Factsheets API
+`
+  },
+  {
+    id: 'factsheets',
+    title: '6. Factsheets API',
+    content: `## 6. Factsheets API
 **Endpoint:** \`GET /api/factsheets/:id\`
 **Description:** Professional-grade report generation for portfolios or individual instruments.
 - **Use Cases:** PDF generation for client reports, "One-pagers" for investment funds.
 - **Format:** Supports dynamic PDF rendering/export with sector allocation charts and performance tables.
-
----
-
-## 7. RAG Agent Orchestrator
+`
+  },
+  {
+    id: 'agent',
+    title: '7. RAG Agent Orchestrator',
+    content: `## 7. RAG Agent Orchestrator
 **Endpoint:** \`POST /api/agent/chat\`  
 **Description:** The primary interface for the Strategic RAG Agent. It handles conversational logic, document ingestion, and semantic retrieval.
+`
+  }
+];
 
+const DOCS_FOOTER = `
 ---
 
 ## 8. Termux / Android CLI Integration
@@ -67,8 +96,23 @@ echo 'curl -s -X POST https://'$(window.location.host)'/api/agent/chat -H "Conte
 
 export default function ApiDocs() {
   const [activeTab, setActiveTab] = useState<'endpoints' | 'tests' | 'cli'>('endpoints');
+  const [searchQuery, setSearchQuery] = useState('');
   const [testResults, setTestResults] = useState<any>(null);
   const [isRunning, setIsRunning] = useState(false);
+
+  const filteredDocs = useMemo(() => {
+    if (!searchQuery.trim()) return DOCS_HEADER + '\n---\n' + DOCS_SECTIONS.map(s => s.content).join('\n---\n') + DOCS_FOOTER;
+
+    const query = searchQuery.toLowerCase();
+    const matches = DOCS_SECTIONS.filter(section => 
+      section.title.toLowerCase().includes(query) || 
+      section.content.toLowerCase().includes(query)
+    );
+
+    if (matches.length === 0) return '# NO_MATCHES_FOUND\n\nYour search query returned zero results within the endpoint registry.';
+
+    return DOCS_HEADER + '\n---\n' + matches.map(s => s.content).join('\n---\n');
+  }, [searchQuery]);
 
   const runSystemTest = async () => {
     setIsRunning(true);
@@ -108,14 +152,27 @@ export default function ApiDocs() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-          <Code2 className="text-[#00FF41]" size={24} />
-          SYSTEM_DOCUMENTATION [DOC_ID: 0x8F]
-        </h2>
-        <p className="text-[#71717A] text-sm italic">
-          Specifications for internal orchestration and RAG communication protocols.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
+            <Code2 className="text-[#00FF41]" size={24} />
+            SYSTEM_DOCUMENTATION [DOC_ID: 0x8F]
+          </h2>
+          <p className="text-[#71717A] text-sm italic">
+            Specifications for internal orchestration and RAG communication protocols.
+          </p>
+        </div>
+
+        <div className="relative group w-full md:w-64">
+           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525B] group-focus-within:text-[#00FF41] transition-colors" />
+           <input 
+             type="text"
+             value={searchQuery}
+             onChange={(e) => setSearchQuery(e.target.value)}
+             placeholder="SEARCH_ENDPOINTS..."
+             className="w-full bg-[#0D0D0F] border border-[#1F1F23] rounded-lg py-2 pl-9 pr-4 text-[10px] font-mono text-white focus:outline-none focus:border-[#00FF41]/50 transition-all placeholder:text-[#3F3F46]"
+           />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -157,7 +214,7 @@ export default function ApiDocs() {
            {activeTab === 'endpoints' ? (
              <div className="markdown-body prose prose-invert max-w-none">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {DOCS_MD}
+                  {filteredDocs}
                 </ReactMarkdown>
              </div>
            ) : activeTab === 'cli' ? (

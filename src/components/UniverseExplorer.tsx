@@ -14,7 +14,8 @@ import {
   X,
   FileText,
   FileCode,
-  Settings2
+  Settings2,
+  Clock
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -24,7 +25,10 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Cell
+  Cell,
+  LineChart,
+  Line,
+  Legend
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
@@ -35,6 +39,8 @@ export default function UniverseExplorer() {
   const [query, setQuery] = useState('');
   const [selectedSector, setSelectedSector] = useState<string>('');
   const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
+  const [minEsg, setMinEsg] = useState<number>(0);
+  const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
   const [securities, setSecurities] = useState<Security[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSecurity, setSelectedSecurity] = useState<Security | null>(null);
@@ -48,6 +54,7 @@ export default function UniverseExplorer() {
   const [hoveredTheme, setHoveredTheme] = useState<string | null>(null);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['ticker', 'score', 'esg']);
+  const [themeExposureHistory, setThemeExposureHistory] = useState<any[]>([]);
 
   const COLUMNS = [
     { id: 'ticker', label: 'TICKER' },
@@ -96,6 +103,9 @@ export default function UniverseExplorer() {
       if (selectedThemes.length > 0 && !searchFilters.themes) {
         searchFilters.themes = selectedThemes;
       }
+      if (minEsg > 0 && !searchFilters.minEsg) {
+        searchFilters.minEsg = minEsg;
+      }
     }
 
     try {
@@ -134,8 +144,9 @@ export default function UniverseExplorer() {
 
   const clearFilters = () => {
     setSelectedThemes([]);
+    setMinEsg(0);
     setActiveThemeFilter(null);
-    performSearch(query, { themes: [], sector: selectedSector });
+    performSearch(query, { themes: [], sector: selectedSector, minEsg: 0 });
   };
 
   const exportToCSV = () => {
@@ -205,6 +216,20 @@ export default function UniverseExplorer() {
     setShowExportDropdown(false);
   };
 
+  const exportToJSON = () => {
+    const dataStr = JSON.stringify(filteredSecurities, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `bita_universe_export_${new Date().toISOString().split('T')[0]}.json`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowExportDropdown(false);
+  };
+
   const filteredSecurities = activeThemeFilter 
     ? securities.filter(s => s.theme === activeThemeFilter)
     : securities;
@@ -218,20 +243,40 @@ export default function UniverseExplorer() {
       const randomIndices = Array.from({ length: 2 }, () => Math.floor(Math.random() * securities.length));
       const targetIds = randomIndices.map(idx => securities[idx].id);
       
-      setSecurities(prev => prev.map((s, i) => {
-        if (randomIndices.includes(i)) {
-          // Volatility factor based on momentum
-          const volatility = 0.03 + (s.momentum * 0.05);
-          const drift = (Math.random() * volatility * 2) - volatility;
-          
-          return {
-            ...s,
-            score: Math.max(0, Math.min(1, s.score + drift)),
-            momentum: Math.max(0, Math.min(1, s.momentum + (drift * 0.8)))
-          };
-        }
-        return s;
-      }));
+      let updatedSecurities: Security[] = [];
+      setSecurities(prev => {
+        updatedSecurities = prev.map((s, i) => {
+          if (randomIndices.includes(i)) {
+            const volatility = 0.03 + (s.momentum * 0.05);
+            const drift = (Math.random() * volatility * 2) - volatility;
+            
+            return {
+              ...s,
+              score: Math.max(0, Math.min(1, s.score + drift)),
+              momentum: Math.max(0, Math.min(1, s.momentum + (drift * 0.8)))
+            };
+          }
+          return s;
+        });
+        return updatedSecurities;
+      });
+
+      // Update theme exposure history
+      const themesToTrack = selectedThemes.length > 0 ? selectedThemes : [THEMES[0], THEMES[1], THEMES[2]];
+      const timestamp = new Date().toLocaleTimeString();
+      const currentExposure: any = { time: timestamp };
+      
+      themesToTrack.forEach(theme => {
+        const themeExposure = updatedSecurities
+          .filter(s => s.theme === theme)
+          .reduce((acc, curr) => acc + curr.score, 0);
+        currentExposure[theme] = parseFloat(themeExposure.toFixed(2));
+      });
+
+      setThemeExposureHistory(prev => {
+        const next = [...prev, currentExposure];
+        return next.slice(-20); // Keep last 20 points
+      });
 
       // Highlight the first updated security for visual feedback
       setLastUpdatedId(targetIds[0]);
@@ -244,6 +289,37 @@ export default function UniverseExplorer() {
 
   return (
     <div className="flex flex-col h-full space-y-6">
+      {/* Global Indices Ticker Bar */}
+      <div className="flex items-center gap-6 overflow-x-auto pb-2 scrollbar-hide border-b border-[#1F1F23]">
+        <div className="flex items-center gap-2 shrink-0">
+          <Globe size={14} className="text-[#00FF41]" />
+          <span className="text-[10px] font-mono font-bold text-[#52525B] uppercase tracking-widest leading-none">Global_Indices</span>
+        </div>
+        {[
+          { label: 'S&P 500', value: '5,123.42', change: '+1.24%' },
+          { label: 'NASDAQ', value: '18,241.90', change: '+0.85%' },
+          { label: 'DOW JONES', value: '38,927.15', change: '-0.12%' },
+          { label: 'RUSSELL 2k', value: '2,045.10', change: '+2.10%' },
+          { label: 'VIX_VOLAT', value: '14.25', change: '-3.45%' },
+        ].map((index, i) => (
+          <div key={i} className="flex items-center gap-2 shrink-0 bg-[#0D0D0F] border border-[#1F1F23] px-3 py-1 rounded group hover:border-[#00FF41]/30 transition-all cursor-default">
+            <span className="text-[10px] font-mono text-[#71717A] group-hover:text-white transition-colors">{index.label}</span>
+            <span className="text-[10px] font-mono font-bold">{index.value}</span>
+            <span className={cn(
+              "text-[9px] font-mono font-bold",
+              index.change.startsWith('+') ? "text-[#00FF41]" : "text-red-500"
+            )}>
+              {index.change}
+            </span>
+          </div>
+        ))}
+        <div className="flex-1" />
+        <div className="flex items-center gap-2 text-[9px] font-mono text-[#52525B] italic">
+          <Clock size={10} />
+          NY_MARKET_OPEN
+        </div>
+      </div>
+
       {/* View Switcher */}
       <div className="flex items-center gap-1 p-1 bg-[#0D0D0F] border border-[#1F1F23] rounded-lg w-fit">
          <button 
@@ -335,201 +411,250 @@ export default function UniverseExplorer() {
            </div>
         </motion.div>
       ) : (
-        /* Explorer Bar (Existing) */
-        <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex-1 min-w-[300px] relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525B] group-focus-within:text-[#00FF41] transition-colors" size={18} />
-          <input 
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && performSearch(query)}
-            placeholder="Search universe by geography, theme, or ticker..."
-            className="w-full bg-[#0D0D0F] border border-[#1F1F23] rounded-md py-2.5 pl-10 pr-24 text-sm focus:outline-none focus:border-[#00FF41]/50 focus:ring-1 focus:ring-[#00FF41]/20 transition-all font-mono"
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
-             <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#00FF41]/5 border border-[#00FF41]/10">
-                <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
-                <span className="text-[8px] font-mono text-[#00FF41] font-bold">SESSION_ACTIVE</span>
-             </div>
-             <kbd className="px-1.5 py-0.5 rounded bg-[#16161A] border border-[#1F1F23] text-[10px] font-mono text-[#52525B]">ENTER</kbd>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex-1 min-w-0 relative group order-2 md:order-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525B] group-focus-within:text-[#00FF41] transition-colors" size={18} />
+            <input 
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && performSearch(query)}
+              placeholder="Search universe..."
+              className="w-full bg-[#0D0D0F] border border-[#1F1F23] rounded-md py-2.5 pl-10 pr-24 text-sm focus:outline-none focus:border-[#00FF41]/50 transition-all font-mono"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-2 pointer-events-none">
+               <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#00FF41]/5 border border-[#00FF41]/10">
+                  <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
+                  <span className="text-[8px] font-mono text-[#00FF41] font-bold">SESSION_ACTIVE</span>
+               </div>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setIsLiveMode(!isLiveMode)}
-            className={cn(
-              "flex items-center gap-2 px-3 py-2 border rounded-md text-xs font-mono transition-all",
-              isLiveMode 
-                ? "bg-[#00FF41]/10 border-[#00FF41]/30 text-[#00FF41]" 
-                : "bg-[#0D0D0F] border-[#1F1F23] text-[#71717A]"
-            )}
-          >
-            <RefreshCcw size={14} className={isLiveMode ? "animate-spin-slow" : ""} />
-            {isLiveMode ? "LIVE_FEED_ON" : "LIVE_FEED_OFF"}
-          </button>
-          <select 
-            value={selectedSector}
-            onChange={(e) => {
-              setSelectedSector(e.target.value);
-              performSearch(query, { sector: e.target.value, themes: selectedThemes });
-            }}
-            className="bg-[#0D0D0F] border border-[#1F1F23] rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-[#00FF41]/50 text-[#E4E4E7]"
-          >
-            <option value="">ALL_SECTORS</option>
-            {SECTORS.map(s => (
-              <option key={s} value={s}>{s.toUpperCase()}</option>
-            ))}
-          </select>
-
-          {/* Theme Multi-select */}
-          <div className="relative">
+          <div className="flex flex-wrap items-center gap-2 order-1 md:order-2">
             <button 
-              onClick={() => setShowThemeDropdown(!showThemeDropdown)}
+              onClick={() => setIsLiveMode(!isLiveMode)}
               className={cn(
-                "flex items-center gap-2 px-3 py-2 bg-[#0D0D0F] border rounded-md text-xs font-mono transition-all",
-                selectedThemes.length > 0 ? "border-[#00FF41]/50 text-[#00FF41]" : "border-[#1F1F23] text-[#71717A] hover:border-[#52525B]"
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 border rounded-md text-xs font-mono transition-all",
+                isLiveMode 
+                  ? "bg-[#00FF41]/10 border-[#00FF41]/30 text-[#00FF41]" 
+                  : "bg-[#0D0D0F] border-[#1F1F23] text-[#71717A]"
               )}
             >
-              <Zap size={14} />
-              {selectedThemes.length > 0 ? `THEMES (${selectedThemes.length})` : "SELECT_THEMES"}
+              <RefreshCcw size={14} className={isLiveMode ? "animate-spin-slow" : ""} />
+              <span className="hidden sm:inline">{isLiveMode ? "LIVE_FEED_ON" : "LIVE_FEED_OFF"}</span>
+              <span className="sm:hidden">{isLiveMode ? "LIVE" : "PAUSED"}</span>
             </button>
+            <select 
+              value={selectedSector}
+              onChange={(e) => {
+                setSelectedSector(e.target.value);
+                performSearch(query, { sector: e.target.value, themes: selectedThemes });
+              }}
+              className="flex-1 sm:flex-none bg-[#0D0D0F] border border-[#1F1F23] rounded-md px-3 py-2 text-xs font-mono focus:outline-none text-[#E4E4E7]"
+            >
+              <option value="">SECTORS</option>
+              {SECTORS.map(s => (
+                <option key={s} value={s}>{s.toUpperCase()}</option>
+              ))}
+            </select>
             
-            {showThemeDropdown && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowThemeDropdown(false)} />
-                <div className="absolute top-full mt-2 left-0 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200">
-                  {THEMES.map(theme => (
-                    <button
-                      key={theme}
-                      onMouseEnter={() => setHoveredTheme(theme)}
-                      onMouseLeave={() => setHoveredTheme(null)}
-                      onClick={() => {
-                        const newThemes = selectedThemes.includes(theme)
-                          ? selectedThemes.filter(t => t !== theme)
-                          : [...selectedThemes, theme];
-                        setSelectedThemes(newThemes);
-                        performSearch(query, { themes: newThemes, sector: selectedSector });
-                      }}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded text-[10px] font-mono transition-colors flex items-center justify-between",
-                        selectedThemes.includes(theme) ? "bg-[#00FF41]/10 text-[#00FF41]" : "text-[#71717A] hover:bg-[#16161A] hover:text-[#E4E4E7]"
-                      )}
-                    >
-                      {theme.toUpperCase()}
-                      {selectedThemes.includes(theme) && <div className="w-1.5 h-1.5 rounded-full bg-[#00FF41]" />}
-                    </button>
-                  ))}
-                  {selectedThemes.length > 0 && (
-                    <button 
-                      onClick={() => {
-                        setSelectedThemes([]);
-                        performSearch(query, { themes: [], sector: selectedSector });
-                        setShowThemeDropdown(false);
-                      }}
-                      className="w-full text-center py-2 text-[9px] font-mono text-red-400 hover:bg-red-400/5 mt-1 border-t border-[#1F1F23]"
-                    >
-                      CLEAR_ALL
-                    </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {/* Theme Multi-select */}
+              <div className="relative flex-1 sm:flex-none">
+                <button 
+                  onClick={() => setShowThemeDropdown(!showThemeDropdown)}
+                  className={cn(
+                    "w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#0D0D0F] border rounded-md text-xs font-mono transition-all",
+                    selectedThemes.length > 0 ? "border-[#00FF41]/50 text-[#00FF41]" : "border-[#1F1F23] text-[#71717A]"
+                  )}
+                >
+                  <Zap size={14} />
+                  <span className="hidden sm:inline">{selectedThemes.length > 0 ? `THEMES (${selectedThemes.length})` : "THEMES"}</span>
+                  <span className="sm:hidden">{selectedThemes.length > 0 ? `THM (${selectedThemes.length})` : "THM"}</span>
+                </button>
+                
+                {showThemeDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowThemeDropdown(false)} />
+                    <div className="absolute top-full mt-2 right-0 sm:left-0 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1">
+                      {THEMES.map(theme => (
+                        <button
+                          key={theme}
+                          onClick={() => {
+                            const newThemes = selectedThemes.includes(theme)
+                              ? selectedThemes.filter(t => t !== theme)
+                              : [...selectedThemes, theme];
+                            setSelectedThemes(newThemes);
+                            performSearch(query, { themes: newThemes, sector: selectedSector });
+                          }}
+                          className={cn(
+                            "w-full text-left px-3 py-2 rounded text-[10px] font-mono flex items-center justify-between",
+                            selectedThemes.includes(theme) ? "bg-[#00FF41]/10 text-[#00FF41]" : "text-[#71717A] hover:bg-[#16161A]"
+                          )}
+                        >
+                          {theme.toUpperCase()}
+                          {selectedThemes.includes(theme) && <div className="w-1.5 h-1.5 rounded-full bg-[#00FF41]" />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="relative flex-1 sm:flex-none">
+                <button 
+                  onClick={() => setShowFiltersDropdown(!showFiltersDropdown)}
+                  className={cn(
+                    "w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#0D0D0F] border rounded-md text-xs font-mono transition-all",
+                    minEsg > 0 ? "border-[#00FF41]/50 text-[#00FF41]" : "border-[#1F1F23] text-[#71717A] hover:text-white"
+                  )}
+                >
+                  <Filter size={14} />
+                  <span className="hidden sm:inline">FILTERS</span>
+                  <span className="sm:hidden">FLTR</span>
+                </button>
+
+                {showFiltersDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowFiltersDropdown(false)} />
+                    <div className="absolute top-full mt-2 right-0 w-64 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-4 space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center justify-between border-b border-[#1F1F23] pb-2 mb-2">
+                        <span className="text-[10px] font-mono font-bold text-[#52525B]">UNIVERSE_FILTERS</span>
+                        <button 
+                          onClick={clearFilters}
+                          className="text-[9px] font-mono text-red-500 hover:underline"
+                        >
+                          RESET
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                         <div className="flex justify-between items-center">
+                            <label className="text-[10px] font-mono text-[#71717A]">MIN_ESG_SCORE</label>
+                            <span className="text-[10px] font-mono text-[#00FF41] font-bold">{minEsg || 'ANY'}</span>
+                         </div>
+                         <input 
+                           type="range"
+                           min="0"
+                           max="95"
+                           step="5"
+                           value={minEsg}
+                           onChange={(e) => {
+                             const val = parseInt(e.target.value);
+                             setMinEsg(val);
+                           }}
+                           onMouseUp={() => performSearch(query, { minEsg, sector: selectedSector, themes: selectedThemes })}
+                           onTouchEnd={() => performSearch(query, { minEsg, sector: selectedSector, themes: selectedThemes })}
+                           className="w-full h-1.5 bg-[#1F1F23] rounded-lg appearance-none cursor-pointer accent-[#00FF41]"
+                         />
+                         <div className="flex justify-between text-[8px] font-mono text-[#52525B]">
+                            <span>OFF</span>
+                            <span>B</span>
+                            <span>BBB</span>
+                            <span>A</span>
+                            <span>AAA</span>
+                         </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-[#1F1F23]">
+                         <p className="text-[8px] font-mono text-[#52525B] leading-relaxed italic">
+                           * ESG thresholds are mapped to internal vector benchmarks. 
+                           AAA:90, AA:80, A:70, BBB:60, BB:50, B:40.
+                         </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowExportDropdown(!showExportDropdown)}
+                    className="p-2 bg-[#00FF41] text-black rounded-md hover:bg-[#00E53B] transition-all"
+                    title="EXPORT_UNIVERSE"
+                  >
+                    <Download size={16} />
+                  </button>
+
+                  {showExportDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowExportDropdown(false)} />
+                      <div className="absolute top-full mt-2 right-0 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="px-3 py-1.5 text-[8px] font-mono text-[#52525B] border-b border-[#1F1F23] mb-1">
+                          EXPORT_DATA
+                        </div>
+                        <button
+                          onClick={exportToCSV}
+                          className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#71717A] hover:bg-[#16161A] hover:text-[#00FF41] flex items-center gap-2 transition-colors"
+                        >
+                          <FileText size={14} />
+                          DOWNLOAD_CSV
+                        </button>
+                        <button
+                          onClick={exportToPDF}
+                          className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#71717A] hover:bg-[#16161A] hover:text-[#00FF41] flex items-center gap-2 transition-colors"
+                        >
+                          <FileText size={14} />
+                          GENERATE_PDF
+                        </button>
+                        <button
+                          onClick={exportToJSON}
+                          className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#71717A] hover:bg-[#16161A] hover:text-[#00FF41] flex items-center gap-2 transition-colors"
+                        >
+                          <FileCode size={14} />
+                          DOWNLOAD_JSON
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
-              </>
-            )}
-          </div>
+                
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+                    className={cn(
+                      "p-2 bg-[#0D0D0F] border rounded-md transition-all",
+                      showColumnDropdown ? "border-[#00FF41] text-[#00FF41]" : "border-[#1F1F23] text-[#71717A] hover:text-white"
+                    )}
+                    title="COLUMN_DENSITY"
+                  >
+                    <Settings2 size={16} />
+                  </button>
 
-          <button className="flex items-center gap-2 px-3 py-2 bg-[#0D0D0F] border border-[#1F1F23] rounded-md text-xs font-mono hover:border-[#52525B] transition-all">
-            <Filter size={14} />
-            FILTERS
-          </button>
-          <button 
-             onClick={() => performSearch(query)}
-             className="p-2 bg-[#0D0D0F] border border-[#1F1F23] rounded-md hover:text-[#00FF41] transition-all"
-          >
-            <RefreshCcw size={16} className={isLoading ? "animate-spin" : ""} />
-          </button>
-          <div className="relative">
-            <button 
-              onClick={() => setShowExportDropdown(!showExportDropdown)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#00FF41] text-black rounded-md text-xs font-bold hover:bg-[#00E53B] transition-all"
-            >
-              <Download size={14} />
-              EXPORT_DATA
-            </button>
-            
-            {showExportDropdown && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowExportDropdown(false)} />
-                <div className="absolute top-full right-0 mt-2 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200">
-                  <button
-                    onClick={() => {
-                      console.log("Exporting basket...");
-                      setShowExportDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#E4E4E7] hover:bg-[#16161A] transition-colors flex items-center gap-2"
-                  >
-                    <Download size={12} className="text-[#00FF41]" />
-                    EXPORT_BASKET
-                  </button>
-                  <button
-                    onClick={exportToCSV}
-                    className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#E4E4E7] hover:bg-[#16161A] transition-colors flex items-center gap-2"
-                  >
-                    <FileText size={12} className="text-[#3B82F6]" />
-                    DOWNLOAD_CSV
-                  </button>
-                  <button
-                    onClick={exportToPDF}
-                    className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#E4E4E7] hover:bg-[#16161A] transition-colors flex items-center gap-2"
-                  >
-                    <FileCode size={12} className="text-orange-400" />
-                    PRINT_PDF_REPORT
-                  </button>
+                  {showColumnDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowColumnDropdown(false)} />
+                      <div className="absolute top-full mt-2 right-0 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="px-3 py-1.5 text-[8px] font-mono text-[#52525B] border-b border-[#1F1F23] mb-1">
+                          COLUMN_VISIBILITY
+                        </div>
+                        {COLUMNS.map(col => (
+                          <button
+                            key={col.id}
+                            onClick={() => {
+                              const next = visibleColumns.includes(col.id)
+                                ? visibleColumns.filter(id => id !== col.id)
+                                : [...visibleColumns, col.id];
+                              if (next.length > 0) setVisibleColumns(next);
+                            }}
+                            className={cn(
+                              "w-full text-left px-3 py-2 rounded text-[10px] font-mono flex items-center justify-between transition-colors",
+                              visibleColumns.includes(col.id) ? "text-[#00FF41] bg-[#00FF41]/5" : "text-[#71717A] hover:bg-[#16161A]"
+                            )}
+                          >
+                            {col.label}
+                            {visibleColumns.includes(col.id) && <ShieldCheck size={10} />}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
-              </>
-            )}
-          </div>
-          
-          <div className="relative">
-            <button 
-              onClick={() => setShowColumnDropdown(!showColumnDropdown)}
-              className="p-2 bg-[#0D0D0F] border border-[#1F1F23] rounded-md text-[#71717A] hover:text-white transition-all"
-            >
-              <Settings2 size={16} />
-            </button>
-            
-            {showColumnDropdown && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowColumnDropdown(false)} />
-                <div className="absolute top-full right-0 mt-2 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200">
-                  <div className="px-3 py-1.5 text-[8px] font-mono text-[#52525B] border-b border-[#1F1F23] mb-1">
-                    CONFIGURE_COLUMNS
-                  </div>
-                  {COLUMNS.map(col => (
-                    <button
-                      key={col.id}
-                      onClick={() => {
-                        const newCols = visibleColumns.includes(col.id)
-                          ? visibleColumns.filter(c => c !== col.id)
-                          : [...visibleColumns, col.id];
-                        // Ensure at least ticker is visible
-                        if (newCols.length > 0) setVisibleColumns(newCols);
-                      }}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded text-[10px] font-mono transition-colors flex items-center justify-between",
-                        visibleColumns.includes(col.id) ? "text-[#00FF41]" : "text-[#71717A] hover:bg-[#16161A] hover:text-[#E4E4E7]"
-                      )}
-                    >
-                      {col.label}
-                      {visibleColumns.includes(col.id) && <div className="w-1 h-1 rounded-full bg-[#00FF41]" />}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Theme Selection Cards */}
@@ -644,52 +769,118 @@ export default function UniverseExplorer() {
            ))}
         </div>
 
-        {/* Factors Analysis Chart */}
-        <div className="col-span-12 lg:col-span-8 bg-[#0D0D0F] border border-[#1F1F23] rounded-lg p-6 flex flex-col h-[400px]">
-           <div className="flex items-center justify-between mb-6">
-              <div className="space-y-1">
-                 <h3 className="text-sm font-mono font-bold">FACTOR_EXPOSURE_INDEX</h3>
-                 <p className="text-xs text-[#52525B]">Relative exposure analysis across selected universe</p>
+        {/* Factors Analysis & Theme Exposure Tabs/Split */}
+        <div className="col-span-12 lg:col-span-8 space-y-6">
+           {/* Factors Analysis Chart */}
+           <div className="bg-[#0D0D0F] border border-[#1F1F23] rounded-lg p-6 flex flex-col h-[350px]">
+              <div className="flex items-center justify-between mb-6">
+                 <div className="space-y-1">
+                    <h3 className="text-sm font-mono font-bold">FACTOR_EXPOSURE_INDEX</h3>
+                    <p className="text-xs text-[#52525B]">Relative exposure analysis across selected universe</p>
+                 </div>
+                 <Maximize2 size={16} className="text-[#52525B] cursor-pointer" />
               </div>
-              <Maximize2 size={16} className="text-[#52525B] cursor-pointer" />
+              
+              <div className="flex-1 w-full">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={filteredSecurities}>
+                       <CartesianGrid strokeDasharray="3 3" stroke="#1F1F23" vertical={false} />
+                       <XAxis 
+                         dataKey="id" 
+                         axisLine={false} 
+                         tickLine={false} 
+                         tick={{ fill: '#52525B', fontSize: 10, fontFamily: 'monospace' }}
+                         dy={10}
+                       />
+                       <YAxis hide />
+                       <Tooltip 
+                         cursor={{ fill: '#1F1F23', opacity: 0.4 }}
+                         contentStyle={{ backgroundColor: '#0D0D0F', border: '1px solid #1F1F23', borderRadius: '4px', fontSize: '10px', fontFamily: 'monospace' }}
+                         itemStyle={{ color: '#00FF41' }}
+                       />
+                       <Bar dataKey="score" radius={[2, 2, 0, 0]}>
+                          {filteredSecurities.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#00FF41' : '#00A635'} />
+                          ))}
+                       </Bar>
+                       <Bar dataKey="momentum" radius={[2, 2, 0, 0]}>
+                          {filteredSecurities.map((entry, index) => (
+                            <Cell key={`cell-m-${index}`} fill="#3B82F6" opacity={0.6} />
+                          ))}
+                       </Bar>
+                    </BarChart>
+                 </ResponsiveContainer>
+              </div>
            </div>
-           
-           <div className="flex-1 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                 <BarChart data={filteredSecurities}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1F1F23" vertical={false} />
-                    <XAxis 
-                      dataKey="id" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#52525B', fontSize: 10, fontFamily: 'monospace' }}
-                      dy={10}
-                    />
-                    <YAxis 
-                      hide
-                    />
-                    <Tooltip 
-                      cursor={{ fill: '#1F1F23', opacity: 0.4 }}
-                      contentStyle={{ backgroundColor: '#0D0D0F', border: '1px solid #1F1F23', borderRadius: '4px', fontSize: '10px', fontFamily: 'monospace' }}
-                      itemStyle={{ color: '#00FF41' }}
-                    />
-                    <Bar dataKey="score" radius={[2, 2, 0, 0]}>
-                       {filteredSecurities.map((entry, index) => (
-                         <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#00FF41' : '#00A635'} />
+
+           {/* Real-time Theme Exposure Chart */}
+           <div className="bg-[#0D0D0F] border border-[#1F1F23] rounded-lg p-6 flex flex-col h-[350px]">
+              <div className="flex items-center justify-between mb-6">
+                 <div className="space-y-1">
+                    <h3 className="text-sm font-mono font-bold flex items-center gap-2">
+                       <TrendingUp size={14} className="text-[#00FF41]" />
+                       THEME_EXPOSURE_TRAJECTORY
+                    </h3>
+                    <p className="text-xs text-[#52525B]">Real-time concentration drift for active thematic baskets</p>
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#00FF41]/5 border border-[#00FF41]/10">
+                       <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
+                       <span className="text-[8px] font-mono text-[#00FF41]">LIVE_STREAM</span>
+                    </div>
+                 </div>
+              </div>
+              
+              <div className="flex-1 w-full">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={themeExposureHistory}>
+                       <CartesianGrid strokeDasharray="3 3" stroke="#1F1F23" vertical={false} strokeOpacity={0.5} />
+                       <XAxis 
+                         dataKey="time" 
+                         axisLine={false} 
+                         tickLine={false} 
+                         tick={{ fill: '#52525B', fontSize: 8, fontFamily: 'monospace' }}
+                         hide={themeExposureHistory.length < 5}
+                       />
+                       <YAxis 
+                         axisLine={false} 
+                         tickLine={false} 
+                         tick={{ fill: '#52525B', fontSize: 8, fontFamily: 'monospace' }}
+                         domain={['auto', 'auto']}
+                       />
+                       <Tooltip 
+                         contentStyle={{ backgroundColor: '#0D0D0F', border: '1px solid #1F1F23', borderRadius: '4px', fontSize: '10px', fontFamily: 'monospace' }}
+                       />
+                       <Legend 
+                         verticalAlign="top" 
+                         align="right"
+                         iconType="circle"
+                         wrapperStyle={{ fontSize: '8px', fontFamily: 'monospace', paddingBottom: '10px' }}
+                       />
+                       {(selectedThemes.length > 0 ? selectedThemes : [THEMES[0], THEMES[1], THEMES[2]]).map((theme, idx) => (
+                         <Line 
+                           key={theme}
+                           type="monotone"
+                           dataKey={theme}
+                           stroke={idx === 0 ? '#00FF41' : idx === 1 ? '#3B82F6' : idx === 2 ? '#F59E0B' : '#8B5CF6'}
+                           strokeWidth={2}
+                           dot={false}
+                           activeDot={{ r: 4, stroke: '#000', strokeWidth: 1 }}
+                           isAnimationActive={false}
+                         />
                        ))}
-                    </Bar>
-                    <Bar dataKey="momentum" radius={[2, 2, 0, 0]}>
-                       {filteredSecurities.map((entry, index) => (
-                         <Cell key={`cell-m-${index}`} fill="#3B82F6" opacity={0.6} />
-                       ))}
-                    </Bar>
-                 </BarChart>
-              </ResponsiveContainer>
+                    </LineChart>
+                 </ResponsiveContainer>
+                 {themeExposureHistory.length === 0 && (
+                   <div className="absolute inset-0 flex items-center justify-center bg-[#0D0D0F]/80">
+                      <p className="text-[10px] font-mono text-[#52525B] animate-pulse">WAITING_FOR_MARKET_TICK...</p>
+                   </div>
+                 )}
+              </div>
            </div>
         </div>
-
         {/* Real-time Data Grid */}
-        <div className="col-span-12 lg:col-span-4 bg-[#0D0D0F] border border-[#1F1F23] rounded-lg flex flex-col overflow-hidden max-h-[400px]">
+        <div className="col-span-12 lg:col-span-4 bg-[#0D0D0F] border border-[#1F1F23] rounded-lg flex flex-col overflow-hidden max-h-[600px] lg:max-h-[400px]">
            <div className="p-4 border-b border-[#1F1F23] flex items-center justify-between bg-[#16161A]/50">
               <span className="text-[10px] font-mono font-bold text-[#71717A]">UNIVERSE_STREAM</span>
               <div className="flex items-center gap-2">
@@ -700,7 +891,9 @@ export default function UniverseExplorer() {
                  <span className="text-[9px] font-mono text-[#71717A]">{isLiveMode ? "REAL_TIME" : "PAUSED"}</span>
                </div>
            </div>
-           <div className="flex-1 overflow-y-auto">
+           
+           {/* Desktop Table View */}
+           <div className="hidden md:block flex-1 overflow-y-auto">
               <table className="w-full text-left">
                  <thead className="sticky top-0 bg-[#0D0D0F] border-b border-[#1F1F23] z-10">
                     <tr className="text-[10px] font-mono text-[#52525B]">
@@ -804,7 +997,77 @@ export default function UniverseExplorer() {
                       );
                     })}
                   </tbody>
-               </table>
+              </table>
+           </div>
+
+           {/* Mobile Card View */}
+           <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-3">
+             {filteredSecurities.map((security) => {
+               const isThemeHighlighted = security.theme === hoveredTheme || security.theme === activeThemeFilter;
+               return (
+                 <div 
+                   key={security.id}
+                   onClick={() => setSelectedSecurity(security)}
+                   className={cn(
+                     "p-3 rounded-md bg-[#16161A] border transition-all relative overflow-hidden",
+                     selectedSecurity?.id === security.id ? "border-[#00FF41]/50 bg-[#1A1A20]" : "border-[#1F1F23]",
+                     lastUpdatedId === security.id && "ring-1 ring-[#00FF41]/50"
+                   )}
+                 >
+                   {isThemeHighlighted && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00FF41]" />
+                   )}
+                   <div className="flex justify-between items-start mb-2">
+                     <div className="flex flex-col">
+                       <span className={cn(
+                         "text-xs font-bold font-mono tracking-wider",
+                         isThemeHighlighted ? "text-[#00FF41]" : "text-white"
+                       )}>
+                         {security.id}
+                       </span>
+                       <span className="text-[10px] text-[#52525B] font-mono">{security.name}</span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <span className={cn(
+                           "px-1.5 py-0.5 rounded text-[8px] font-bold font-mono",
+                           security.esg.includes('A') ? "bg-green-500/10 text-green-400" : "bg-yellow-500/10 text-yellow-400"
+                        )}>
+                           {security.esg}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-mono font-bold">{security.score.toFixed(2)}</span>
+                          {security.momentum > 0.8 ? <ArrowUpRight size={10} className="text-[#00FF41]" /> : <ArrowDownRight size={10} className="text-red-400" />}
+                        </div>
+                     </div>
+                   </div>
+                   <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
+                      <div className="flex gap-4">
+                        {visibleColumns.includes('pe') && (
+                          <div className="flex flex-col">
+                             <span className="text-[8px] text-[#52525B] font-mono">P/E</span>
+                             <span className="text-[10px] font-mono">{security.pe?.toFixed(1) || '—'}</span>
+                          </div>
+                        )}
+                        {visibleColumns.includes('marketCap') && (
+                          <div className="flex flex-col">
+                             <span className="text-[8px] text-[#52525B] font-mono">MCAP</span>
+                             <span className="text-[10px] font-mono">{security.marketCap || '—'}</span>
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addAssetToPortfolio(security, 10);
+                        }}
+                        className="p-1 px-2 bg-[#00FF41]/10 text-[#00FF41] border border-[#00FF41]/20 rounded-[2px] transition-all text-[8px] font-mono hover:bg-[#00FF41] hover:text-black"
+                      >
+                         BUY_10
+                      </button>
+                   </div>
+                 </div>
+               );
+             })}
            </div>
         </div>
 

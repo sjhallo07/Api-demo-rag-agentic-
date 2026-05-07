@@ -56,6 +56,59 @@ interface ActionMenuProps {
   onClose: () => void;
 }
 
+function PositionChart({ history, color }: { history: { date: string; value: number }[], color: string }) {
+  const data = {
+    labels: history.map(h => h.date),
+    datasets: [
+      {
+        data: history.map(h => h.value),
+        borderColor: color,
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.4,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 0 } as const,
+    plugins: {
+      legend: { display: false },
+      tooltip: { 
+        enabled: true,
+        backgroundColor: '#16161A',
+        borderColor: '#1F1F23',
+        borderWidth: 1,
+        titleFont: { family: 'monospace', size: 8 },
+        bodyFont: { family: 'monospace', size: 8 },
+        displayColors: false,
+        padding: 4,
+        callbacks: {
+          title: (context: any) => `T: ${context[0].label}`,
+          label: (context: any) => ` VAL: $${context.parsed.y.toFixed(2)}`
+        }
+      },
+    },
+    interaction: {
+      mode: 'index' as const,
+      intersect: false,
+    },
+    scales: {
+      x: { display: false },
+      y: { display: false },
+    },
+  };
+
+  return (
+    <div className="w-20 h-8 opacity-70 group-hover:opacity-100 transition-opacity">
+      <Line data={data} options={options} />
+    </div>
+  );
+}
+
 function ActionMenu({ onClose }: ActionMenuProps) {
   return (
     <motion.div 
@@ -452,6 +505,10 @@ export default function PortfolioDashboard() {
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                  mode: 'index' as const,
+                  intersect: false,
+                },
                 plugins: {
                   legend: { display: false },
                   tooltip: {
@@ -563,6 +620,8 @@ export default function PortfolioDashboard() {
                         borderColor: '#1F1F23',
                         borderWidth: 1,
                         padding: 12,
+                        titleFont: { family: 'monospace', size: 10, weight: 'bold' },
+                        bodyFont: { family: 'monospace', size: 10 },
                         callbacks: {
                            label: (context: any) => ` ${context.raw.toFixed(2)}% SYSTEM_EXPOSURE`
                         }
@@ -599,6 +658,7 @@ export default function PortfolioDashboard() {
                 <th className="p-3 text-[10px] font-mono text-[#52525B] uppercase tracking-wider">Sector</th>
                 <th className="p-3 text-[10px] font-mono text-[#52525B] uppercase tracking-wider text-right">Weight</th>
                 <th className="p-3 text-[10px] font-mono text-[#52525B] uppercase tracking-wider text-right">P/L (30D)</th>
+                <th className="p-3 text-[10px] font-mono text-[#52525B] uppercase tracking-wider text-center">Trend (30D)</th>
                 <th className="p-3 text-[10px] font-mono text-[#52525B] uppercase tracking-wider text-center">ESG</th>
                 <th className="p-3 text-[10px] font-mono text-[#52525B] uppercase tracking-wider text-center">Action</th>
               </tr>
@@ -629,6 +689,14 @@ export default function PortfolioDashboard() {
                           style={{ width: `${Math.min(100, Math.abs(pos.unrealizedPL) * 5)}%` }} 
                         />
                       </div>
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <div className="flex justify-center">
+                      <PositionChart 
+                        history={pos.returnHistory} 
+                        color={pos.unrealizedPL >= 0 ? "#00FF41" : "#F43F5E"} 
+                      />
                     </div>
                   </td>
                   <td className="p-3">

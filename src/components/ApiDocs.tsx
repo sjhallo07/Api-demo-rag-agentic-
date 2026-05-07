@@ -1,68 +1,72 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { BookOpen, Code2, Terminal, Play, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { BookOpen, Code2, Terminal, Play, CheckCircle2, XCircle, Loader2, Globe } from 'lucide-react';
 
 const DOCS_MD = `# BITA Intelligence API Documentation [v1.0]
 
-This document outlines the available endpoints for the BITA Financial Intelligence Terminal. All requests should be sent with \`Content-Type: application/json\`.
+This document outlines the core functional modules and API specifications for the BITA Financial Intelligence Terminal. All requests are handled via JSON over HTTPS.
 
 ---
 
-## 1. Investment Universe Construction API
-**Endpoint:** \`POST /api/universe/search\`  
-**Description:** Filters the 30k+ instrument universe based on quantitative factors and semantic themes.
+## 1. Reference Data API
+**Endpoint:** \`GET /api/reference-data\`
+**Description:** The foundational layer providing basic static and dynamic metadata for all financial instruments.
+- **Use Cases:** Instrument lookup, catalog population, identifier mapping (ISIN, Ticker, Currency).
+- **Metadata:** Ticker, Name, Sector, Country, Currency, Asset Class.
 
-### Request Body
-\`\`\`json
-{
-  "query": "High momentum tech stocks",
-  "filters": {
-    "sector": "Technology",
-    "geography": "North America",
-    "minEsg": 80
-  }
-}
-\`\`\`
+## 2. Thematics API
+**Endpoint:** \`GET /api/thematics\`
+**Description:** Groups assets based on macro-economic trends and investment narratives.
+- **Use Cases:** Thematic portfolio construction, exposure analysis to megatrends (AI, Clean Energy, ESG).
+- **Data Points:** Relevance scores, thematic constituents, thematic weights.
 
----
+## 3. Investment Universe Construction API
+**Endpoint:** \`POST /api/universe/search\`
+**Description:** Rule-based filtering engine to create specialized investable sub-sets.
+- **Use Cases:** ESG exclusions (e.g., Tabaco), Geography filtering (e.g., Large Cap Europe), Watchlist automation.
+- **Engine:** Supports complex logical operators (EQUALS, GREATER_THAN, IN) on multi-factor data.
 
-## 2. Analytics API
-**Endpoint:** \`GET /api/analytics/portfolio\`  
-**Description:** Retrieves risk analytics and performance metrics for the current active portfolio.
+## 4. Analytics API
+**Endpoint:** \`GET /api/analytics/portfolio\`
+**Description:** High-performance calculation engine for risk and performance metrics.
+- **Use Cases:** Volatility analysis, Sharpe Ratio, Beta correlation, Tracking Error.
+- **Output:** KPI summaries and comparative benchmark series.
 
----
+## 5. Backtesting API
+**Endpoint:** \`POST /api/backtest\`
+**Description:** Historical simulation engine for testing multi-factor investment strategies.
+- **Use Cases:** Portfolio simulation, Stress testing (e.g., COVID-19 impact), Rebalancing optimization.
+- **Output:** Equity curves, Drawdown series, and periodized return matrices.
 
-## 3. Factsheets API
-**Endpoint:** \`GET /api/factsheets/:id\`  
-**Description:** Generates a dynamic link to the PDF factsheet for a specific instrument.
-
----
-
-## 4. Backtesting API
-**Endpoint:** \`POST /api/backtest\`  
-**Description:** Simulates portfolio performance across historical timeframes.
-
----
-
-## 5. Thematics API
-**Endpoint:** \`GET /api/thematics\`  
-**Description:** Maps megatrends (AI, Clean Energy) to specific ticker exposures.
-
----
-
-## 6. Reference Data API
-**Endpoint:** \`GET /api/reference/:id\`  
-**Description:** Retrieves point-in-time financial identifiers (ISIN, CUSIP, SEDOL).
+## 6. Factsheets API
+**Endpoint:** \`GET /api/factsheets/:id\`
+**Description:** Professional-grade report generation for portfolios or individual instruments.
+- **Use Cases:** PDF generation for client reports, "One-pagers" for investment funds.
+- **Format:** Supports dynamic PDF rendering/export with sector allocation charts and performance tables.
 
 ---
 
 ## 7. RAG Agent Orchestrator
 **Endpoint:** \`POST /api/agent/chat\`  
-**Description:** The primary interface for the Strategic RAG Agent. It handles conversational logic, document ingestion, and semantic retrieval.`;
+**Description:** The primary interface for the Strategic RAG Agent. It handles conversational logic, document ingestion, and semantic retrieval.
+
+---
+
+## 8. Termux / Android CLI Integration
+BITA Command supports native Android terminal integration via Termux. 
+
+### Quick Install (Bash)
+\`\`\`bash
+# Run this in Termux to create the bita command
+echo 'curl -s -X POST https://'$(window.location.host)'/api/agent/chat -H "Content-Type: application/json" -d "{\\"query\\": \\"$*\\"}" | jq -r ".content"' > bita && chmod +x bita
+# Usage
+./bita "Top AI stocks in Europe"
+\`\`\`
+`;
 
 export default function ApiDocs() {
-  const [activeTab, setActiveTab] = useState<'endpoints' | 'tests'>('endpoints');
+  const [activeTab, setActiveTab] = useState<'endpoints' | 'tests' | 'cli'>('endpoints');
   const [testResults, setTestResults] = useState<any>(null);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -126,6 +130,12 @@ export default function ApiDocs() {
                   <Terminal size={12} /> ENDPOINTS
                </button>
                <button 
+                 onClick={() => setActiveTab('cli')}
+                 className={`w-full text-left p-2 rounded text-xs font-mono flex items-center gap-2 transition-colors ${activeTab === 'cli' ? 'bg-[#1F1F23] text-[#00FF41]' : 'text-[#71717A] hover:bg-[#16161A]'}`}
+               >
+                  <Globe size={12} /> TERMUX_CLI
+               </button>
+               <button 
                  onClick={() => setActiveTab('tests')}
                  className={`w-full text-left p-2 rounded text-xs font-mono flex items-center gap-2 transition-colors ${activeTab === 'tests' ? 'bg-[#1F1F23] text-[#00FF41]' : 'text-[#71717A] hover:bg-[#16161A]'}`}
                >
@@ -149,6 +159,42 @@ export default function ApiDocs() {
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {DOCS_MD}
                 </ReactMarkdown>
+             </div>
+           ) : activeTab === 'cli' ? (
+             <div className="space-y-6">
+                <div className="flex items-center gap-3 border-b border-[#1F1F23] pb-4">
+                   <Terminal className="text-[#00FF41]" size={20} />
+                   <h4 className="text-sm font-bold font-mono">TERMUX_ANDROID_INTEGRATION</h4>
+                </div>
+
+                <div className="space-y-4">
+                   <div className="p-4 bg-[#16161A] border border-[#1F1F23] rounded-md">
+                      <p className="text-xs text-[#A1A1AA] mb-4">
+                        To enable deep integration with your Android device, run the following setup script in your Termux environment. 
+                        This connects your local shell directly to the BITA Intelligence Orchestrator.
+                      </p>
+                      
+                      <div className="relative group">
+                         <pre className="bg-black p-4 rounded text-[#00FF41] text-[10px] font-mono overflow-x-auto border border-[#00FF41]/20">
+                            {`pkg install jq curl -y\n\ncat << 'EOF' > bita\n#!/bin/bash\n# BITA COMMAND CLI\nURL="${window.location.origin}/api/agent/chat"\nQUERY=$*\ncurl -s -X POST "$URL" -H "Content-Type: application/json" -d "{\\"query\\": \\"$QUERY\\"}" | jq -r ".content"\nEOF\n\nchmod +x bita\nmv bita $PREFIX/bin/\n\n# Usage:\n# bita "What are top ESG stocks?"`}
+                         </pre>
+                         <button 
+                           onClick={() => navigator.clipboard.writeText(`pkg install jq curl -y\ncat << 'EOF' > bita\n#!/bin/bash\nURL="${window.location.origin}/api/agent/chat"\nQUERY=$*\ncurl -s -X POST "$URL" -H "Content-Type: application/json" -d "{\\"query\\": \\"$QUERY\\"}" | jq -r ".content"\nEOF\nchmod +x bita\nmv bita $PREFIX/bin/`)}
+                           className="absolute top-2 right-2 p-1.5 bg-[#1F1F23] rounded text-[#71717A] hover:text-[#00FF41] transition-all opacity-0 group-hover:opacity-100"
+                         >
+                            <Code2 size={12} />
+                         </button>
+                      </div>
+                   </div>
+
+                   <div className="flex items-start gap-3 p-4 bg-[#00FF41]/5 border border-[#00FF41]/10 rounded">
+                      <BookOpen size={16} className="text-[#00FF41] shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                         <p className="text-[10px] font-bold text-white">AUTOMATION ENABLED</p>
+                         <p className="text-[10px] text-[#71717A]">You can now pipe shell outputs to BITA for analysis: <code className="text-[#00FF41]">ls -la | bita "Summarize these files"</code></p>
+                      </div>
+                   </div>
+                </div>
              </div>
            ) : (
              <div className="space-y-6">

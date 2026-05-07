@@ -10,7 +10,8 @@ import {
   Zap,
   ShieldCheck,
   TrendingUp,
-  Globe
+  Globe,
+  X
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -25,6 +26,7 @@ import {
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Security, UniverseQueryResponse } from '../types';
+import { addAssetToPortfolio } from '../services/portfolioService';
 
 export default function UniverseExplorer() {
   const [query, setQuery] = useState('');
@@ -37,18 +39,48 @@ export default function UniverseExplorer() {
 
   const [isLiveMode, setIsLiveMode] = useState(true);
   const [lastUpdatedId, setLastUpdatedId] = useState<string | null>(null);
+  const [activeThemeVisualization, setActiveThemeVisualization] = useState<string | null>(null);
+  const [activeThemeFilter, setActiveThemeFilter] = useState<string | null>(null);
 
   const SECTORS = ["Technology", "Semiconductors", "Consumer", "Automotive", "Finance", "Healthcare", "Energy"];
   const THEMES = ["Consumer Tech", "Enterprise Software", "Lithography", "AI/GPU", "Luxury", "EV Transition", "Global Banking", "Personal Care"];
 
+  const getThemeAssetCount = (theme: string) => {
+    // In a real app, this would come from the API
+    // Here we simulate it based on the securities we have + some stable randomness
+    const baseCount = securities.filter(s => s.theme === theme).length;
+    return baseCount + (theme.length * 2); 
+  };
+
+  const [activeTab, setActiveTab] = useState<'explorer' | 'builder'>('explorer');
+  const [rules, setRules] = useState([{ field: 'sector', operator: 'equals', value: '' }]);
+
+  const addRule = () => setRules([...rules, { field: 'sector', operator: 'equals', value: '' }]);
+  const removeRule = (idx: number) => setRules(rules.filter((_, i) => i !== idx));
+  const updateRule = (idx: number, updates: any) => {
+    const newRules = [...rules];
+    newRules[idx] = { ...newRules[idx], ...updates };
+    setRules(newRules);
+  };
+
   const performSearch = async (val: string = "", filters?: any) => {
     setIsLoading(true);
     const searchFilters = { ...filters };
-    if (selectedSector && !searchFilters.sector) {
-      searchFilters.sector = selectedSector;
-    }
-    if (selectedThemes.length > 0 && !searchFilters.themes) {
-      searchFilters.themes = selectedThemes;
+    
+    // Aggregate rules into filters if in builder mode
+    if (activeTab === 'builder') {
+      rules.forEach(rule => {
+        if (rule.value) {
+          searchFilters[rule.field] = rule.value;
+        }
+      });
+    } else {
+      if (selectedSector && !searchFilters.sector) {
+        searchFilters.sector = selectedSector;
+      }
+      if (selectedThemes.length > 0 && !searchFilters.themes) {
+        searchFilters.themes = selectedThemes;
+      }
     }
 
     try {
@@ -85,6 +117,16 @@ export default function UniverseExplorer() {
     return () => window.removeEventListener('bit_query_universe', handleChatQuery);
   }, []);
 
+  const clearFilters = () => {
+    setSelectedThemes([]);
+    setActiveThemeFilter(null);
+    performSearch(query, { themes: [], sector: selectedSector });
+  };
+
+  const filteredSecurities = activeThemeFilter 
+    ? securities.filter(s => s.theme === activeThemeFilter)
+    : securities;
+
   // Real-time market simulation interval
   useEffect(() => {
     if (!isLiveMode || securities.length === 0) return;
@@ -120,8 +162,99 @@ export default function UniverseExplorer() {
 
   return (
     <div className="flex flex-col h-full space-y-6">
-      {/* Search and Filters Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* View Switcher */}
+      <div className="flex items-center gap-1 p-1 bg-[#0D0D0F] border border-[#1F1F23] rounded-lg w-fit">
+         <button 
+           onClick={() => setActiveTab('explorer')}
+           className={cn(
+             "px-4 py-1.5 rounded text-[10px] font-mono font-bold transition-all",
+             activeTab === 'explorer' ? "bg-[#1F1F23] text-[#00FF41]" : "text-[#52525B] hover:text-[#71717A]"
+           )}
+         >
+           MODERN_EXPLORER
+         </button>
+         <button 
+           onClick={() => setActiveTab('builder')}
+           className={cn(
+             "px-4 py-1.5 rounded text-[10px] font-mono font-bold transition-all",
+             activeTab === 'builder' ? "bg-[#1F1F23] text-[#3B82F6]" : "text-[#52525B] hover:text-[#71717A]"
+           )}
+         >
+           RULE_BUILDER
+         </button>
+      </div>
+
+      {activeTab === 'builder' ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#0D0D0F] border border-[#1F1F23] rounded-lg p-6 space-y-4"
+        >
+           <div className="flex items-center justify-between">
+              <h3 className="text-sm font-mono font-bold">UNIVERSE_RULE_CONSTRUCTION</h3>
+              <button 
+                onClick={addRule}
+                className="text-[10px] font-mono text-[#00FF41] hover:underline"
+              >
+                + ADD_CONDITION
+              </button>
+           </div>
+           
+           <div className="space-y-3">
+              {rules.map((rule, i) => (
+                <div key={i} className="flex items-center gap-3">
+                   <select 
+                    value={rule.field}
+                    onChange={(e) => updateRule(i, { field: e.target.value })}
+                    className="bg-black border border-[#1F1F23] rounded px-3 py-1.5 text-[10px] font-mono text-white focus:outline-none focus:border-[#3B82F6]/50"
+                   >
+                     <option value="sector">SECTOR</option>
+                     <option value="geography">REGION</option>
+                     <option value="marketCap">MARKET_CAP</option>
+                     <option value="esg">ESG_RATING</option>
+                   </select>
+                   <select 
+                    value={rule.operator}
+                    onChange={(e) => updateRule(i, { operator: e.target.value })}
+                    className="bg-black border border-[#1F1F23] rounded px-3 py-1.5 text-[10px] font-mono text-[#71717A] focus:outline-none focus:border-[#3B82F6]/50"
+                   >
+                     <option value="equals">EQUALS</option>
+                     <option value="contains">CONTAINS</option>
+                     <option value="greaterThan">GREATER_THAN</option>
+                     <option value="lessThan">LESS_THAN</option>
+                   </select>
+                   <input 
+                    type="text"
+                    value={rule.value}
+                    onChange={(e) => updateRule(i, { value: e.target.value })}
+                    placeholder="VALUE..."
+                    className="flex-1 bg-black border border-[#1F1F23] rounded px-3 py-1.5 text-[10px] font-mono text-white placeholder:text-[#3F3F46] focus:outline-none focus:border-[#00FF41]/50"
+                   />
+                   <button 
+                    onClick={() => removeRule(i)}
+                    className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                   >
+                     ×
+                   </button>
+                </div>
+              ))}
+           </div>
+
+           <div className="pt-4 flex items-center gap-3">
+              <button 
+                onClick={() => performSearch()}
+                className="bg-[#3B82F6] text-black text-[10px] font-bold px-6 py-2 rounded font-mono hover:bg-[#2563EB] transition-all"
+              >
+                APPLY_UNIVERSE_LOGIC
+              </button>
+              <button className="text-[10px] font-mono text-[#52525B] hover:text-white transition-colors">
+                SAVE_AS_TEMPLATE
+              </button>
+           </div>
+        </motion.div>
+      ) : (
+        /* Explorer Bar (Existing) */
+        <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex-1 min-w-[300px] relative group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525B] group-focus-within:text-[#00FF41] transition-colors" size={18} />
           <input 
@@ -237,6 +370,88 @@ export default function UniverseExplorer() {
           </button>
         </div>
       </div>
+      )}
+
+      {/* Theme Selection Cards */}
+      {selectedThemes.length > 0 && (
+        <div className="flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          {selectedThemes.map((theme) => (
+            <motion.div
+              layoutId={`theme-card-${theme}`}
+              key={theme}
+              whileHover={{ y: -4, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                const isSelected = activeThemeFilter === theme;
+                setActiveThemeFilter(isSelected ? null : theme);
+                setActiveThemeVisualization(isSelected ? null : theme);
+              }}
+              className={cn(
+                "relative flex-1 min-w-[200px] bg-[#0D0D0F] border p-4 rounded-lg cursor-pointer transition-all",
+                activeThemeFilter === theme 
+                  ? "border-[#00FF41] shadow-[0_0_15px_rgba(0,255,65,0.15)] ring-1 ring-[#00FF41]/20 bg-[#121214]" 
+                  : "border-[#1F1F23] hover:border-[#52525B] hover:bg-[#121214]"
+              )}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <motion.div 
+                  animate={activeThemeFilter === theme ? { scale: [1, 1.1, 1] } : {}}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className={cn(
+                    "p-1.5 rounded transition-colors",
+                    activeThemeFilter === theme ? "bg-[#00FF41] text-black" : "bg-[#00FF41]/10 text-[#00FF41]"
+                  )}
+                >
+                  <Zap size={14} />
+                </motion.div>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newThemes = selectedThemes.filter(t => t !== theme);
+                    setSelectedThemes(newThemes);
+                    if (activeThemeFilter === theme) setActiveThemeFilter(null);
+                    if (activeThemeVisualization === theme) setActiveThemeVisualization(null);
+                    performSearch(query, { themes: newThemes, sector: selectedSector });
+                  }}
+                  className="text-[#52525B] hover:text-red-400 p-1 transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+              <h4 className="text-[10px] font-mono font-bold text-[#71717A] mb-1 tracking-wider">THEMATIC_BASKET</h4>
+              <div className="flex items-end justify-between">
+                <p className="text-sm font-bold text-white uppercase">{theme}</p>
+                <div className="text-right">
+                  <p className="text-[11px] font-mono text-[#00FF41] font-bold">{getThemeAssetCount(theme)}</p>
+                  <p className="text-[8px] font-mono text-[#52525B]">ASSETS</p>
+                </div>
+              </div>
+              
+              {activeThemeFilter === theme && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  className="mt-4 pt-4 border-t border-[#1F1F23] space-y-3"
+                >
+                   <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-mono text-[#52525B]">REL_STRENGTH</span>
+                      <div className="w-24 h-1 bg-[#1F1F23] rounded-full overflow-hidden">
+                         <div className="h-full bg-[#00FF41]" style={{ width: '75%' }} />
+                      </div>
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-mono text-[#52525B]">BETA_PROFILE</span>
+                      <span className="text-[9px] font-mono text-[#E4E4E7]">1.24 (High)</span>
+                   </div>
+                   <button className="w-full py-2 bg-[#1F1F23] rounded text-[9px] font-mono text-[#00FF41] hover:bg-[#2A2A30] transition-colors border border-[#00FF41]/10">
+                      EXPLORE_DEEP_INSIGHTS
+                   </button>
+                </motion.div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* Main Grid & Chart Layout */}
       <div className="flex-1 grid grid-cols-12 gap-6 min-h-0">
@@ -279,7 +494,7 @@ export default function UniverseExplorer() {
            
            <div className="flex-1 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                 <BarChart data={securities}>
+                 <BarChart data={filteredSecurities}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1F1F23" vertical={false} />
                     <XAxis 
                       dataKey="id" 
@@ -297,12 +512,12 @@ export default function UniverseExplorer() {
                       itemStyle={{ color: '#00FF41' }}
                     />
                     <Bar dataKey="score" radius={[2, 2, 0, 0]}>
-                       {securities.map((entry, index) => (
+                       {filteredSecurities.map((entry, index) => (
                          <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#00FF41' : '#00A635'} />
                        ))}
                     </Bar>
                     <Bar dataKey="momentum" radius={[2, 2, 0, 0]}>
-                       {securities.map((entry, index) => (
+                       {filteredSecurities.map((entry, index) => (
                          <Cell key={`cell-m-${index}`} fill="#3B82F6" opacity={0.6} />
                        ))}
                     </Bar>
@@ -333,7 +548,7 @@ export default function UniverseExplorer() {
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-[#1F1F23] text-xs">
-                    {securities.map((security) => (
+                    {filteredSecurities.map((security) => (
                       <tr 
                         key={security.id} 
                         onClick={() => setSelectedSecurity(security)}
@@ -373,12 +588,23 @@ export default function UniverseExplorer() {
                             </div>
                          </td>
                          <td className="p-3 text-right">
-                             <span className={cn(
-                               "px-1.5 py-0.5 rounded text-[9px] font-bold",
-                               security.esg.includes('A') ? "bg-green-500/10 text-green-400" : "bg-yellow-500/10 text-yellow-400"
-                             )}>
-                               {security.esg}
-                             </span>
+                             <div className="flex flex-col items-end gap-1">
+                               <span className={cn(
+                                 "px-1.5 py-0.5 rounded text-[9px] font-bold",
+                                 security.esg.includes('A') ? "bg-green-500/10 text-green-400" : "bg-yellow-500/10 text-yellow-400"
+                               )}>
+                                 {security.esg}
+                               </span>
+                               <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  addAssetToPortfolio(security, 10);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 px-1.5 bg-[#00FF41]/10 text-[#00FF41] border border-[#00FF41]/20 rounded-[2px] transition-all text-[8px] font-mono hover:bg-[#00FF41] hover:text-black flex items-center gap-1"
+                               >
+                                  BUY_10
+                               </button>
+                             </div>
                          </td>
                       </tr>
                     ))}

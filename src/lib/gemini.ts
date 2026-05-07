@@ -3,21 +3,35 @@ import { GoogleGenAI } from "@google/genai";
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 /**
- * Splits text into overlapping chunks for better RAG context
+ * Generates an embedding for a piece of text.
  */
-function chunkText(text: string, size: number, overlap: number): string[] {
-  const chunks: string[] = [];
-  if (!text || size <= 0) return chunks;
-  
-  let start = 0;
-  while (start < text.length) {
-    const end = Math.min(start + size, text.length);
-    chunks.push(text.substring(start, end));
-    
-    if (end === text.length) break;
-    start += (size - overlap);
+export async function getEmbedding(text: string): Promise<number[]> {
+  try {
+    const result = await ai.models.embedContent({
+      model: "gemini-embedding-2-preview",
+      content: { parts: [{ text }] },
+    });
+    return result.embedding.values || [];
+  } catch (error) {
+    console.error("Embedding generation failed:", error);
+    return [];
   }
-  return chunks;
+}
+
+/**
+ * Calculates cosine similarity between two vectors.
+ */
+export function cosineSimilarity(vecA: number[], vecB: number[]): number {
+  if (vecA.length !== vecB.length || vecA.length === 0) return 0;
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
 const AGENT_SYSTEM_INSTRUCTION = `You are the BITA Strategic RAG Agent. 
@@ -42,21 +56,15 @@ export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' = 
   }
 
   const model = "gemini-3-flash-preview";
-  const temperature = type === 'extract' ? 0 : 0.5;
+  // As requested: Temp 0 for extraction, Temp 0.4 for grounded humanized response
+  const temperature = type === 'extract' ? 0 : 0.4;
   
   const contents: any[] = [];
   
   // RAG processing for chat
   let docContext = "";
   if (type === 'chat' && documents && documents.length > 0) {
-    const allChunks: string[] = [];
-    documents.forEach((doc, docIdx) => {
-      const chunks = chunkText(doc, 1000, 200);
-      chunks.forEach((chunk, chunkIdx) => {
-        allChunks.push(`[Source_Doc_${docIdx}_Chunk_${chunkIdx}]: ${chunk}`);
-      });
-    });
-    docContext = allChunks.slice(0, 10).join("\n\n");
+    docContext = documents.join("\n\n");
   }
 
   let finalContents: any;
@@ -64,17 +72,21 @@ export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' = 
   if (type === 'chat') {
     const ragPrompt = `
       INTERNAL PROJECT FOCUS: BITA Financial Intelligence Terminal.
-      DOCUMENT CONTEXT (Semantic Chunks): 
-      ${docContext || "No document context provided."}
+      
+      CONTEXTO TÉCNICO (VERDAD ABSOLUTA):
+      ${docContext || "No specific technical context provided for this query."}
+      
+      INVESTMENT UNIVERSE SNAPSHOT: 
+      ${JSON.stringify(universeContext)}
+      
+      INSTRUCCIONES DE RESPUESTA:
+      1. Responde de forma amable y conversacional pero profesional.
+      2. USA ÚNICAMENTE el contexto técnico y los datos del universo proporcionados arriba. 
+      3. Si la respuesta no se puede derivar del contexto, di educadamente que no tienes esa información específica en el terminal.
+      4. PROHIBIDO inventar datos financieros o especulaciones fuera del contexto inyectado.
+      5. Usa markdown para tablas y estructuras.
 
-      UNIVERSE DATA: ${JSON.stringify(universeContext)}
-      
-      USER QUERY: ${prompt}
-      
-      INSTRUCTIONS:
-      - Use markdown for readability (tables, bullets).
-      - If user asks for visuals, generate a mock table or ASCII chart.
-      - Reference specific chunks (e.g., [Source_Doc_0_Chunk_1]) if you use information from them.
+      USER QUERY: "${prompt}"
     `;
     finalContents = { parts: [{ text: ragPrompt }] };
   } else {
@@ -99,7 +111,7 @@ export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' = 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
     if (error.message?.includes("API key not valid")) {
-      return "Terminal Auth Error: Your BITA Command Key is invalid or has expired. Please verify environment settings.";
+       return "Terminal Auth Error: Your BITA Command Key is invalid or has expired.";
     }
     return type === 'extract' ? "{}" : `The system encountered an error: ${error.message || "Unknown error"}`;
   }

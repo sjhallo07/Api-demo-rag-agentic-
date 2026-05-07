@@ -3,10 +3,14 @@ export type Sector = "Technology" | "Semiconductors" | "Automotive" | "Communica
 export interface Security {
   id: string;
   name: string;
-  sector: Sector;
+  sector: string;
+  geography: string;
   score: number;
   esg: string;
   momentum: number;
+  pe: number;
+  marketCap: string;
+  theme: string;
 }
 
 export interface AttachmentMetadata {
@@ -24,7 +28,7 @@ export interface ChatMessage {
   attachments?: AttachmentMetadata[]; // Detailed metadata for thumbnails/icons
 }
 
-export type ModuleId = "universe" | "analytics" | "backtesting" | "thematics" | "factsheets" | "data" | "strategy" | "mobile_preview" | "docs";
+export type ModuleId = "universe" | "analytics" | "backtesting" | "thematics" | "factsheets" | "data" | "strategy" | "mobile_preview" | "docs" | "admin";
 
 export interface UniverseQueryResponse {
   status: string;

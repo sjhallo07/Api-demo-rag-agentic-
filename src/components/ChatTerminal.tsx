@@ -4,8 +4,94 @@ import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../lib/utils';
-import { chatWithGemini } from '../lib/gemini';
+import { chatWithGemini, getEmbedding, cosineSimilarity } from '../lib/gemini';
 import { ChatMessage, AttachmentMetadata } from '../types';
+import { getKnowledgeBase } from '../services/knowledgeService';
+
+import { Line, Bar } from 'react-chartjs-2';
+import { 
+  Chart as ChartJS, 
+  CategoryScale, 
+  LinearScale, 
+  PointElement, 
+  LineElement, 
+  BarElement,
+  Title, 
+  Tooltip as ChartTooltip, 
+  Legend, 
+  Filler 
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  ChartTooltip,
+  Legend,
+  Filler
+);
+
+function AssetWidget({ assets }: { assets: any[] }) {
+  return (
+    <div className="bg-[#16161A] border border-[#1F1F23] rounded-lg overflow-hidden my-4">
+      <div className="p-2 bg-[#1F1F23] text-[9px] font-mono text-[#00FF41]">IDENTIFIED_ASSETS</div>
+      <div className="p-3 grid grid-cols-2 gap-2">
+        {assets.slice(0, 4).map((asset, i) => (
+          <div key={i} className="flex items-center justify-between p-2 bg-black border border-[#1F1F23] rounded">
+            <span className="text-[10px] font-mono font-bold text-white">{asset.ticker || asset.id}</span>
+            <span className="text-[9px] font-mono text-[#00FF41]">+{ (Math.random() * 5).toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BacktestWidget({ data }: { data: any }) {
+  const chartData = {
+    labels: Array.from({ length: 12 }, (_, i) => `M${i+1}`),
+    datasets: [{
+      label: 'Performance',
+      data: Array.from({ length: 12 }, () => 100 + (Math.random() * 20 - 5)),
+      borderColor: '#3B82F6',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      fill: true,
+      tension: 0.4
+    }]
+  };
+
+  return (
+    <div className="bg-[#16161A] border border-[#1F1F23] rounded-lg overflow-hidden my-4">
+      <div className="p-2 bg-[#1F1F23] text-[9px] font-mono text-[#3B82F6]">BACKTEST_SIMULATION_RESULT</div>
+      <div className="p-4">
+        <div className="h-32 mb-4">
+          <Line 
+            data={chartData} 
+            options={{ 
+              responsive: true, 
+              maintainAspectRatio: false, 
+              plugins: { legend: { display: false } },
+              scales: { x: { display: false }, y: { display: false } }
+            }} 
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+           <div>
+              <p className="text-[8px] font-mono text-[#52525B]">ANN_RETURN</p>
+              <p className="text-sm font-mono font-bold text-[#00FF41]">+14.2%</p>
+           </div>
+           <div>
+              <p className="text-[8px] font-mono text-[#52525B]">MAX_DRAWDOWN</p>
+              <p className="text-sm font-mono font-bold text-red-400">-8.5%</p>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ChatTerminal() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -18,6 +104,7 @@ export default function ChatTerminal() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [ragThinking, setRagThinking] = useState<string[]>([]);
   const [stagedAttachments, setStagedAttachments] = useState<AttachmentMetadata[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +113,7 @@ export default function ChatTerminal() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, ragThinking]);
 
   const handleSend = async () => {
     if (!input.trim() && stagedAttachments.length === 0) return;
@@ -43,32 +130,37 @@ export default function ChatTerminal() {
     setInput('');
     setStagedAttachments([]);
     setIsLoading(true);
+    setRagThinking([]);
 
     try {
+      const logger = (msg: string) => setRagThinking(prev => [...prev, msg]);
       const base64Docs = userMessage.attachments?.map(at => at.data) || [];
 
-      // Step 1: Intent Extraction (Temp 0 - for strict JSON)
-      const extraction = await chatWithGemini(input, 'extract', base64Docs);
+      // Phase 1: Intent Extraction (Temp 0)
+      logger("INITIALIZING_AGENT_CORE... EXPLOITING_INTENT...");
+      const extraction = await chatWithGemini(userMessage.content, 'extract', base64Docs);
       try {
         const filters = JSON.parse(extraction);
         if (filters && Object.keys(filters).length > 0) {
-          window.dispatchEvent(new CustomEvent('bit_query_universe', { detail: { query: input, filters } }));
+          window.dispatchEvent(new CustomEvent('bit_query_universe', { detail: { query: userMessage.content, filters } }));
         }
       } catch (e) {
-        console.warn("Intent extraction skipped for general query");
+        console.warn("Intent extraction skipped");
       }
 
-      // Step 2: RAG Pipeline in Frontend
-      // 2a: Get Universe context
+      // Phase 2: Vector Search (Step A: Retrieval - Temp 0 logic)
+      logger("GENERATING_QUERY_EMBEDDING_V2...");
+      const queryVector = await getEmbedding(userMessage.content);
+      
+      logger("RETRIEVING_UNIVERSE_DATA...");
       let universeContext = [];
       try {
         let filters = {};
         try { filters = JSON.parse(extraction); } catch (e) {}
-
         const universeResp = await fetch('/api/universe/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: input, filters })
+          body: JSON.stringify({ query: userMessage.content, filters })
         });
         const universeData = await universeResp.json();
         universeContext = universeData.results || [];
@@ -76,8 +168,32 @@ export default function ChatTerminal() {
         console.error("Universe retrieval failed", e);
       }
 
-      // 2b: Call Gemini directly from Frontend
-      const agentContent = await chatWithGemini(input, 'chat', base64Docs, universeContext);
+      logger("SEMANTIC_RAG_PIPELINE: SEARCHING_KNOWLEDGE_BASE...");
+      const kb = getKnowledgeBase();
+      let topInsights: string[] = [];
+
+      if (queryVector.length > 0 && kb.length > 0) {
+        // Simple client-side vector search - In real app these are pre-stored
+        const insightsWithScore = await Promise.all(kb.map(async (insight) => {
+          const insightVector = await getEmbedding(`${insight.title}: ${insight.content}`);
+          const score = cosineSimilarity(queryVector, insightVector);
+          return { content: `[INSIGHT_${insight.id}]: ${insight.content}`, score };
+        }));
+
+        topInsights = insightsWithScore
+          .sort((a, b) => b.score - a.score)
+          .filter(i => i.score > 0.6) 
+          .slice(0, 3)
+          .map(i => i.content);
+        
+        logger(`RAG_MATCH_FOUND: ${topInsights.length} RELATED_FINANCIAL_INSIGHTS`);
+      } else {
+        logger("RAG_MATCH: NO_RELEVANT_KNOWLEDGE_FOUND");
+      }
+
+      // Phase 3: Generation (Step B: Grounded Response - Temp 0.4)
+      logger("SYNTHESIZING_GROUNDED_RESPONSE (TEMP_0.4)...");
+      const agentContent = await chatWithGemini(userMessage.content, 'chat', topInsights.length > 0 ? topInsights : base64Docs, universeContext);
       
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -90,6 +206,7 @@ export default function ChatTerminal() {
       console.error(error);
     } finally {
       setIsLoading(false);
+      setRagThinking([]);
     }
   };
 
@@ -170,7 +287,26 @@ export default function ChatTerminal() {
                   </div>
                 )}
                 <div className="markdown-body prose-sm prose-invert max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({ node, inline, className, children, ...props }: any) {
+                        const content = String(children).replace(/\n$/, '');
+                        if (!inline && className === 'language-json') {
+                          try {
+                            const data = JSON.parse(content);
+                            if (data.type === 'backtest') return <BacktestWidget data={data} />;
+                            if (data.type === 'assets' || data.assets) return <AssetWidget assets={data.assets || data} />;
+                          } catch (e) {}
+                        }
+                        return (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        );
+                      }
+                    }}
+                  >
                     {message.content}
                   </ReactMarkdown>
                 </div>
@@ -184,9 +320,26 @@ export default function ChatTerminal() {
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] font-mono text-[#52525B]">ASSISTANT PROCESSING...</span>
             </div>
-            <div className="bg-[#0A0A0B] border border-[#1F1F23] p-4 rounded-lg flex items-center gap-3">
-              <Loader2 className="animate-spin text-[#00FF41]" size={16} />
-              <span className="text-xs font-mono text-[#00FF41]">EXECUTING_GEMINI_MODALITY_CALL</span>
+            <div className="bg-[#0A0A0B] border border-[#1F1F23] p-4 rounded-lg space-y-3 w-full">
+              <div className="flex items-center gap-3">
+                <Loader2 className="animate-spin text-[#00FF41]" size={16} />
+                <span className="text-xs font-mono text-[#00FF41]">EXECUTING_GEMINI_MODALITY_CALL</span>
+              </div>
+              
+              {ragThinking.length > 0 && (
+                <div className="pt-2 border-t border-[#1F1F23] space-y-1.5">
+                  {ragThinking.map((step, i) => (
+                    <motion.p 
+                      initial={{ opacity: 0, x: -5 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      key={i} 
+                      className="text-[9px] font-mono text-[#52525B]"
+                    >
+                      <span className="text-[#00FF41]/50 mr-1 opacity-50">&gt;</span> {step}
+                    </motion.p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

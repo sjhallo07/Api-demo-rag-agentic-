@@ -18,7 +18,8 @@ import {
   X,
   Plus,
   BrainCircuit,
-  BookOpen
+  BookOpen,
+  ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './lib/utils';
@@ -27,6 +28,7 @@ import ChatTerminal from './components/ChatTerminal';
 import UniverseExplorer from './components/UniverseExplorer';
 import StrategyBuilder from './components/StrategyBuilder';
 import PortfolioDashboard from './components/PortfolioDashboard';
+import AdminIntelligence from './components/AdminIntelligence';
 import MobilePreview from './components/MobilePreview';
 import ApiDocs from './components/ApiDocs';
 
@@ -34,6 +36,7 @@ const MODULES = [
   { id: 'universe' as ModuleId, name: 'Universe Construction', icon: Layers, description: 'Slice and dice based on geography, sectors, and factors.' },
   { id: 'analytics' as ModuleId, name: 'Portfolio Dashboard', icon: BarChart3, description: 'Interactive visualization of portfolio allocation, performance, and ESG.' },
   { id: 'strategy' as ModuleId, name: 'Strategy Builder', icon: BrainCircuit, description: 'Personalized investment strategies based on your profile.' },
+  { id: 'admin' as ModuleId, name: 'Admin Intelligence', icon: ShieldAlert, description: 'Manage financial knowledge base and agent learning tokens.' },
   { id: 'docs' as ModuleId, name: 'API Documentation', icon: BookOpen, description: 'Technical specifications for BITA endpoints.' },
   { id: 'mobile_preview' as ModuleId, name: 'Mobile App View', icon: Compass, description: 'Visualize how the BITA intelligence looks on a mobile device.' },
 ];
@@ -42,11 +45,19 @@ export default function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>('universe');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleOpenTermux = () => {
+    // Attempt to open Termux using Android Intent
+    // This will work on Android devices with Termux installed
+    const intentUrl = "intent://#Intent;scheme=termux;package=com.termux;end";
+    window.location.href = intentUrl;
+  };
 
   return (
     <div className="flex h-screen w-full bg-[#0A0A0B] text-[#E4E4E7] font-sans selection:bg-[#00FF41] selection:text-black overflow-hidden">
@@ -58,9 +69,18 @@ export default function App() {
         )}
       >
         <div className="p-4 flex items-center gap-3 border-bottom border-[#1F1F23]">
-          <div className="w-8 h-8 rounded-sm bg-[#00FF41] flex items-center justify-center text-black">
+          <button 
+            onClick={handleOpenTermux}
+            title="Open Local Termux (Android)"
+            className="w-8 h-8 rounded-sm bg-[#00FF41] flex items-center justify-center text-black hover:bg-[#00E53B] transition-all active:scale-95 group relative"
+          >
             <Terminal size={20} />
-          </div>
+            {!isSidebarOpen && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-[#1F1F23] text-[#00FF41] text-[10px] font-mono rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 border border-[#00FF41]/20">
+                OPEN_TERMUX
+              </div>
+            )}
+          </button>
           {isSidebarOpen && (
             <span className="font-mono font-bold tracking-tighter text-xl">BITA COMMAND</span>
           )}
@@ -134,6 +154,13 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+             <button 
+               onClick={() => setIsDocsModalOpen(true)}
+               className="hidden sm:flex items-center gap-2 px-3 py-1 bg-[#00FF41]/10 border border-[#00FF41]/20 rounded text-[10px] font-mono text-[#00FF41] hover:bg-[#00FF41]/20 transition-all font-bold"
+             >
+                <BookOpen size={12} />
+                DOCS_VER_1.0
+             </button>
              <div className="hidden lg:flex items-center gap-3 px-3 py-1 bg-[#16161A] border border-[#1F1F23] rounded text-[11px] font-mono">
                 <span className="text-[#52525B]">INSTITUTIONAL ACCESS:</span>
                 <span className="text-[#00FF41]">BITA_INDEX_01</span>
@@ -143,6 +170,46 @@ export default function App() {
              </div>
           </div>
         </header>
+
+        {/* Documentation Modal */}
+        <AnimatePresence>
+          {isDocsModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsDocsModalOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-5xl h-[85vh] bg-[#0D0D0F] border border-[#1F1F23] rounded-xl shadow-2xl flex flex-col overflow-hidden"
+              >
+                <div className="p-4 border-b border-[#1F1F23] flex items-center justify-between bg-[#16161A]">
+                   <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-[#00FF41]" />
+                      <span className="text-xs font-mono font-bold tracking-widest text-[#00FF41]">SYSTEM_CORE_DOCUMENTATION</span>
+                   </div>
+                   <button 
+                     onClick={() => setIsDocsModalOpen(false)}
+                     className="p-1.5 hover:bg-[#1F1F23] rounded text-[#71717A] hover:text-white transition-colors"
+                   >
+                     <X size={18} />
+                   </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                   <ApiDocs />
+                </div>
+                <div className="p-3 bg-[#0A0A0B] border-t border-[#1F1F23] flex justify-center">
+                   <p className="text-[9px] font-mono text-[#3F3F46] tracking-tighter">BITA INTELLIGENCE PROTOCOL © 2026 / ALL RIGHTS RESERVED / ACCESS_LEVEL: INSTITUTIONAL</p>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Dynamic Viewport */}
         <div className="flex-1 flex overflow-hidden lg:flex-row flex-col">
@@ -181,6 +248,17 @@ export default function App() {
                   className="p-8 h-full"
                 >
                   <StrategyBuilder />
+                </motion.div>
+              ) : activeModule === 'admin' ? (
+                <motion.div
+                  key="admin"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-8 h-full"
+                >
+                  <AdminIntelligence />
                 </motion.div>
               ) : activeModule === 'mobile_preview' ? (
                 <motion.div

@@ -19,7 +19,7 @@ export class BitaAgent {
     Always suggest specific actions (tickers) that match their profile.
     If the user has not provided these details, politely ask for them to refine the strategy.`;
 
-  async processRequest(query: string, documents?: string[]): Promise<AgentResponse> {
+  async processRequest(query: string, documents?: string[], extractionOnly: boolean = false): Promise<AgentResponse> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return {
@@ -28,9 +28,9 @@ export class BitaAgent {
       };
     }
 
-    // 1. Document Processing (Advanced Chunking)
+    // 1. Document Processing (Advanced Chunking) - skip if extractionOnly
     let docContext = "";
-    if (documents && documents.length > 0) {
+    if (!extractionOnly && documents && documents.length > 0) {
       const allChunks: string[] = [];
       documents.forEach((doc, docIdx) => {
         const chunks = this.chunkText(doc, 1000, 200);
@@ -38,28 +38,28 @@ export class BitaAgent {
           allChunks.push(`[Source_Doc_${docIdx}_Chunk_${chunkIdx}]: ${chunk}`);
         });
       });
-      // Limit to top 10 chunks to stay within a reasonable context window for Flash
       docContext = allChunks.slice(0, 10).join("\n\n");
     }
 
-    // 2. Semantic Retrieval (Universe Data) - DIRECT CALL
-    const universeContext = searchUniverse(query);
-    
-    // 3. Generate Augmented Response
-    const prompt = `
-      INTERNAL PROJECT FOCUS: BITA Financial Intelligence Terminal.
-      DOCUMENT CONTEXT (Semantic Chunks): 
-      ${docContext || "No document context provided."}
+    // 2. Build Prompt
+    let prompt = "";
+    let systemInstruction = this.systemInstruction;
+    let temperature = 0.5;
 
-      UNIVERSE DATA: ${JSON.stringify(universeContext)}
-      
-      USER QUERY: ${query}
-      
-      INSTRUCTIONS:
-      - Use markdown for readability (tables, bullets).
-      - If user asks for visuals, generate a mock table or ASCII chart.
-      - Reference specific chunks (e.g., [Source_Doc_0_Chunk_1]) if you use information from them.
-    `;
+    if (extractionOnly) {
+      systemInstruction = "You are a financial entity extractor. Convert the user's natural language request into a filter JSON object. Fields: geography (string), sector (string), minEsg (number 0-100), theme (string). Respond ONLY with valid JSON.";
+      prompt = `USER_QUERY: ${query}\n\nRespond with JSON only.`;
+      temperature = 0;
+    } else {
+      const universeContext = searchUniverse(query);
+      prompt = `
+        INTERNAL PROJECT FOCUS: BITA Financial Intelligence Terminal.
+        DOCUMENT CONTEXT: ${docContext || "None"}
+        UNIVERSE DATA: ${JSON.stringify(universeContext)}
+        USER QUERY: ${query}
+        INSTRUCTIONS: Reference specific chunks and suggest tickers.
+      `;
+    }
     
     try {
       const ai = new GoogleGenAI({ apiKey: apiKey });
@@ -67,14 +67,14 @@ export class BitaAgent {
         model: "gemini-3-flash-preview", 
         contents: { parts: [{ text: prompt }] },
         config: {
-          systemInstruction: this.systemInstruction,
-          temperature: 0.5,
+          systemInstruction: systemInstruction,
+          temperature: temperature,
         }
       });
       
       return {
-        content: response.text || "No response generated.",
-        data: universeContext
+        content: response.text || (extractionOnly ? "{}" : "No response generated."),
+        data: extractionOnly ? null : searchUniverse(query)
       };
     } catch (error: any) {
       console.error("AI Agent Error (Backend):", error);
@@ -82,12 +82,12 @@ export class BitaAgent {
       if (error.message?.includes("API key not valid")) {
         return {
           content: "The backend orchestration requires a verified Command Key. Falling back to local intelligence...",
-          data: universeContext
+          data: []
         };
       }
       return {
         content: `Agentic Orchestration Error: ${error.message || "Unknown error"}`,
-        data: universeContext
+        data: []
       };
     }
   }

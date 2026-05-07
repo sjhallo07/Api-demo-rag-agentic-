@@ -9,7 +9,7 @@ This document outlines the available endpoints for the BITA Financial Intelligen
 
 ---
 
-## 1. Universe Search Engine
+## 1. Investment Universe Construction API
 **Endpoint:** \`POST /api/universe/search\`  
 **Description:** Filters the 30k+ instrument universe based on quantitative factors and semantic themes.
 
@@ -27,18 +27,39 @@ This document outlines the available endpoints for the BITA Financial Intelligen
 
 ---
 
-## 2. RAG Agent Orchestrator
-**Endpoint:** \`POST /api/agent/chat\`  
-**Description:** The primary interface for the Strategic RAG Agent. It handles conversational logic, document ingestion, and semantic retrieval.
-
-### Processing Logic
-1. **RAG Pipeline**: Ingests user documents and performs semantic "top-K" retrieval from the Universe DB.
-2. **LLM Grounding**: Uses Gemini 1.5 Flash to synthesize data into actionable investment strategies.
+## 2. Analytics API
+**Endpoint:** \`GET /api/analytics/portfolio\`  
+**Description:** Retrieves risk analytics and performance metrics for the current active portfolio.
 
 ---
 
-## 3. Reference Data
-Instruments are mapped using point-in-time financial identifiers (ISIN, CUSIP, SEDOL) to ensure data integrity across cross-border universes.`;
+## 3. Factsheets API
+**Endpoint:** \`GET /api/factsheets/:id\`  
+**Description:** Generates a dynamic link to the PDF factsheet for a specific instrument.
+
+---
+
+## 4. Backtesting API
+**Endpoint:** \`POST /api/backtest\`  
+**Description:** Simulates portfolio performance across historical timeframes.
+
+---
+
+## 5. Thematics API
+**Endpoint:** \`GET /api/thematics\`  
+**Description:** Maps megatrends (AI, Clean Energy) to specific ticker exposures.
+
+---
+
+## 6. Reference Data API
+**Endpoint:** \`GET /api/reference/:id\`  
+**Description:** Retrieves point-in-time financial identifiers (ISIN, CUSIP, SEDOL).
+
+---
+
+## 7. RAG Agent Orchestrator
+**Endpoint:** \`POST /api/agent/chat\`  
+**Description:** The primary interface for the Strategic RAG Agent. It handles conversational logic, document ingestion, and semantic retrieval.`;
 
 export default function ApiDocs() {
   const [activeTab, setActiveTab] = useState<'endpoints' | 'tests'>('endpoints');
@@ -49,30 +70,32 @@ export default function ApiDocs() {
     setIsRunning(true);
     setTestResults(null);
     try {
-      // Test 1: Universe Search (Semantic)
-      const t1Start = performance.now();
-      const r1 = await fetch('/api/universe/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: 'AI and semiconductors' })
-      });
-      const d1 = await r1.json();
-      const t1End = performance.now();
+      const results: any = {};
 
-      // Test 2: RAG Agent
-      const t2Start = performance.now();
-      const r2 = await fetch('/api/agent/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: 'Quick health check' })
-      });
-      const d2 = await r2.json();
-      const t2End = performance.now();
+      const testEndpoint = async (name: string, url: string, method: string = 'GET', body?: any) => {
+        const start = performance.now();
+        const r = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          ...(body && { body: JSON.stringify(body) })
+        });
+        const end = performance.now();
+        return { 
+          status: r.ok, 
+          latency: Math.round(end - start), 
+          name 
+        };
+      };
 
-      setTestResults({
-        universe: { status: r1.ok, latency: Math.round(t1End - t1Start), data: d1 },
-        agent: { status: r2.ok, latency: Math.round(t2End - t2Start), data: d2 }
-      });
+      results.universe = await testEndpoint('Universe Construction', '/api/universe/search', 'POST', { query: 'AI' });
+      results.analytics = await testEndpoint('Analytics API', '/api/analytics/portfolio');
+      results.factsheets = await testEndpoint('Factsheets API', '/api/factsheets/AAPL');
+      results.backtest = await testEndpoint('Backtesting API', '/api/backtest', 'POST', { portfolio: ['AAPL'] });
+      results.thematics = await testEndpoint('Thematics API', '/api/thematics');
+      results.reference = await testEndpoint('Reference Data API', '/api/reference/AAPL');
+      results.agent = await testEndpoint('RAG Orchestrator', '/api/agent/chat', 'POST', { query: 'Health check' });
+
+      setTestResults(results);
     } catch (e) {
       setTestResults({ error: String(e) });
     }
@@ -161,27 +184,18 @@ export default function ApiDocs() {
 
                 {testResults && (
                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                      <div className="p-4 bg-[#16161A] rounded border border-[#1F1F23] flex items-center justify-between">
-                         <div className="flex items-center gap-3">
-                            {testResults.universe?.status ? <CheckCircle2 className="text-[#00FF41]" size={16} /> : <XCircle className="text-red-500" size={16} />}
-                            <div className="space-y-0.5">
-                               <p className="text-xs font-mono font-bold">UNIVERSE_SEARCH_API</p>
-                               <p className="text-[10px] text-[#52525B]">Semantic Retrieval Performance Test</p>
-                            </div>
-                         </div>
-                         <span className="text-[10px] font-mono text-[#71717A]">{testResults.universe?.latency}ms</span>
-                      </div>
-
-                      <div className="p-4 bg-[#16161A] rounded border border-[#1F1F23] flex items-center justify-between">
-                         <div className="flex items-center gap-3">
-                            {testResults.agent?.status ? <CheckCircle2 className="text-[#00FF41]" size={16} /> : <XCircle className="text-red-500" size={16} />}
-                            <div className="space-y-0.5">
-                               <p className="text-xs font-mono font-bold">RAG_AGENT_ORCHESTRATOR</p>
-                               <p className="text-[10px] text-[#52525B]">LLM Grounding & Context Synthesis</p>
-                            </div>
-                         </div>
-                         <span className="text-[10px] font-mono text-[#71717A]">{testResults.agent?.latency}ms</span>
-                      </div>
+                      {Object.entries(testResults).filter(([k]) => k !== 'error').map(([key, result]: [string, any]) => (
+                        <div key={key} className="p-4 bg-[#16161A] rounded border border-[#1F1F23] flex items-center justify-between">
+                           <div className="flex items-center gap-3">
+                              {result.status ? <CheckCircle2 className="text-[#00FF41]" size={16} /> : <XCircle className="text-red-500" size={16} />}
+                              <div className="space-y-0.5">
+                                 <p className="text-xs font-mono font-bold">{result.name.toUpperCase()}</p>
+                                 <p className="text-[10px] text-[#52525B]">Endpoint Connectivity Test</p>
+                              </div>
+                           </div>
+                           <span className="text-[10px] font-mono text-[#71717A]">{result.latency}ms</span>
+                        </div>
+                      ))}
 
                       {testResults.error && (
                         <div className="p-4 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-xs font-mono">

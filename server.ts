@@ -22,11 +22,75 @@ async function startServer() {
     });
   });
 
+  // Analytics API
+  app.get("/api/analytics/portfolio", (req, res) => {
+    // In a real app, this would be tied to a user session
+    res.json({
+      status: "success",
+      data: searchUniverse().slice(0, 5).map(s => ({
+        ...s,
+        weight: 0.2,
+        performance_1y: (Math.random() * 30 - 5).toFixed(2)
+      }))
+    });
+  });
+
+  // Factsheets API
+  app.get("/api/factsheets/:id", (req, res) => {
+    const { id } = req.params;
+    res.json({
+      status: "success",
+      instrument_id: id,
+      factsheet_url: `https://bita.io/factsheets/${id}.pdf`,
+      last_updated: new Date().toISOString()
+    });
+  });
+
+  // Backtesting API
+  app.post("/api/backtest", (req, res) => {
+    const { portfolio, start_date, end_date } = req.body;
+    res.json({
+      status: "success",
+      results: {
+        total_return: "14.2%",
+        sharpe_ratio: "1.24",
+        drawdown: "-8.5%",
+        data_points: 120
+      }
+    });
+  });
+
+  // Thematics API
+  app.get("/api/thematics", (req, res) => {
+    res.json({
+      status: "success",
+      themes: [
+        { id: "ai", name: "Artificial Intelligence", exposure: 0.85 },
+        { id: "energy", name: "Clean Energy", exposure: 0.62 },
+        { id: "health", name: "Genomics", exposure: 0.44 }
+      ]
+    });
+  });
+
+  // Reference Data API
+  app.get("/api/reference/:id", (req, res) => {
+    const { id } = req.params;
+    res.json({
+      status: "success",
+      identifiers: {
+        ticker: id,
+        isin: `US${Math.random().toString().slice(2, 12)}`,
+        cusip: Math.random().toString().slice(2, 11),
+        sedol: Math.random().toString(36).slice(2, 9).toUpperCase()
+      }
+    });
+  });
+
   // RAG Orchestrator Endpoint
   app.post("/api/agent/chat", async (req, res) => {
-    const { query, documents } = req.body;
+    const { query, documents, extractionOnly } = req.body;
     try {
-      const response = await bitaAgent.processRequest(query, documents);
+      const response = await bitaAgent.processRequest(query, documents, extractionOnly);
       res.json(response);
     } catch (error) {
       console.error("Agent Error:", error);

@@ -26,11 +26,13 @@ import { ModuleId } from './types';
 import ChatTerminal from './components/ChatTerminal';
 import UniverseExplorer from './components/UniverseExplorer';
 import StrategyBuilder from './components/StrategyBuilder';
+import PortfolioDashboard from './components/PortfolioDashboard';
 import MobilePreview from './components/MobilePreview';
 import ApiDocs from './components/ApiDocs';
 
 const MODULES = [
   { id: 'universe' as ModuleId, name: 'Universe Construction', icon: Layers, description: 'Slice and dice based on geography, sectors, and factors.' },
+  { id: 'analytics' as ModuleId, name: 'Portfolio Dashboard', icon: BarChart3, description: 'Interactive visualization of portfolio allocation, performance, and ESG.' },
   { id: 'strategy' as ModuleId, name: 'Strategy Builder', icon: BrainCircuit, description: 'Personalized investment strategies based on your profile.' },
   { id: 'docs' as ModuleId, name: 'API Documentation', icon: BookOpen, description: 'Technical specifications for BITA endpoints.' },
   { id: 'mobile_preview' as ModuleId, name: 'Mobile App View', icon: Compass, description: 'Visualize how the BITA intelligence looks on a mobile device.' },
@@ -157,6 +159,17 @@ export default function App() {
                   className="p-8 h-full"
                 >
                   <UniverseExplorer />
+                </motion.div>
+              ) : activeModule === 'analytics' ? (
+                <motion.div
+                  key="analytics"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-8 h-full"
+                >
+                  <PortfolioDashboard />
                 </motion.div>
               ) : activeModule === 'strategy' ? (
                 <motion.div

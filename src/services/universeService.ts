@@ -22,6 +22,30 @@ export const INSTRUMENTS: Security[] = [
   { id: "OR.PA", name: "L'Oreal", sector: "Consumer", geography: "Europe", score: 0.91, esg: "AA", momentum: 0.61, pe: 32.5, marketCap: "230B", theme: "Personal Care" },
 ];
 
+export interface PortfolioPosition extends Security {
+  weight: number;
+  unrealizedPL: number;
+  returnHistory: { date: string; value: number }[];
+}
+
+export function getPortfolioData() {
+  const portfolio: PortfolioPosition[] = INSTRUMENTS.slice(0, 5).map(s => ({
+    ...s,
+    weight: Math.random() * 0.3 + 0.1,
+    unrealizedPL: (Math.random() * 20) - 5,
+    returnHistory: Array.from({ length: 30 }, (_, i) => ({
+      date: `2024-04-${i + 1}`,
+      value: 100 + (Math.random() * 20) + (i * 0.5)
+    }))
+  }));
+
+  // Normalize weights
+  const totalWeight = portfolio.reduce((sum, p) => sum + p.weight, 0);
+  portfolio.forEach(p => p.weight = p.weight / totalWeight);
+
+  return portfolio;
+}
+
 export function searchUniverse(query?: string, filters?: any) {
   let results = [...INSTRUMENTS];
 

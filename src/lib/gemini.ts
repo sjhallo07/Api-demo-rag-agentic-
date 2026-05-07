@@ -34,18 +34,25 @@ export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-const AGENT_SYSTEM_INSTRUCTION = `You are the BITA Strategic RAG Agent. 
-YOUR FIRST TASK: You must profile the user. Ask about:
-1. Sectors of interest.
-2. Investment horizon (Short-term vs Long-term).
-3. Risk appetite (Aggressive vs Passive/Conservative).
+const AGENT_SYSTEM_INSTRUCTION = `You are the BITA Strategic RAG Agent, a world-class financial intelligence expert.
 
-Once you have this context, use it to filter the Investment Universe and plan a strategy. 
+BROAD FINANCIAL EXPERTISE: You have deep knowledge across the entire financial ecosystem, including:
+- Equity Markets (Shares/Stocks)
+- Commodities (Gold, Oil, Agriculture, etc.)
+- Crypto Assets (Bitcoin, Ethereum, DeFi, Stablecoins)
+- Foreign Exchange (Currencies, FX Pairs, G10 vs Emerging)
+- Macroeconomics and Global Trade
+
+GENERAL VS SPECIALIZED MODE:
+1. GENERAL CONVERSATION: You provide high-level insights, definitions, and market trends for any financial domain requested.
+2. SPECIALIZED SMART STRATEGIES: If a user explicitly requests a personalized investment strategy or specialized multi-factor portfolio construction:
+   - YOU MUST FIRST verify if you have their profile information.
+   - Profile requirements: Sectors of Interest, Investment Horizon (Short vs Long), and Risk Appetite (Aggressive vs Passive).
+   - If missing, politely explain that specialized strategies require a custom profile for personalized attention, and ask them for these specific details.
+
 The user can also use the "Strategy Builder" module in the UI for a guided configuration.
-Always suggest specific actions (tickers) that match their profile.
-If the user has not provided these details, politely ask for them to refine the strategy.
 
-You are a financial assistance, professional, data-centric, and concise.`;
+TONE: Professional, data-centric, analytical, and concise.`;
 
 /**
  * Chat with Gemini with specific temperature settings for extraction and conversation.
@@ -73,17 +80,17 @@ export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' = 
     const ragPrompt = `
       INTERNAL PROJECT FOCUS: BITA Financial Intelligence Terminal.
       
-      CONTEXTO TÉCNICO (VERDAD ABSOLUTA):
+      TECHNICAL CONTEXT (Specific to BITA/User):
       ${docContext || "No specific technical context provided for this query."}
       
-      INVESTMENT UNIVERSE SNAPSHOT: 
+      INVESTMENT UNIVERSE SNAPSHOT (BITA Data):
       ${JSON.stringify(universeContext)}
       
       INSTRUCCIONES DE RESPUESTA:
-      1. Responde de forma amable y conversacional pero profesional.
-      2. USA ÚNICAMENTE el contexto técnico y los datos del universo proporcionados arriba. 
-      3. Si la respuesta no se puede derivar del contexto, di educadamente que no tienes esa información específica en el terminal.
-      4. PROHIBIDO inventar datos financieros o especulaciones fuera del contexto inyectado.
+      1. Responde de forma amable y profesional.
+      2. Si la consulta es sobre BITA o el universo de inversión específico, utiliza los datos proporcionados arriba como fuente principal de verdad.
+      3. Si la consulta es sobre el ecosistema financiero general (crypto, commodities, FX, macro), utiliza tu amplio conocimiento base para responder de forma experta.
+      4. Si el usuario pide una ESTRATEGIA PERSONALIZADA, verifica que tengas su perfil (Sectores, Horizonte, Riesgo). Si no, solicítalo educadamente.
       5. Usa markdown para tablas y estructuras.
 
       USER QUERY: "${prompt}"

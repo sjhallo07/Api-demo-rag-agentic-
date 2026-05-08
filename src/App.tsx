@@ -42,6 +42,39 @@ import AuthModule from './components/AuthModule';
 import PaymentModule from './components/PaymentModule';
 import { SESSION_KEY } from './constants';
 
+// Font Awesome Setup
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faLayerGroup, 
+  faChartPie, 
+  faMicrochip, 
+  faUserShield, 
+  faBookBookmark, 
+  faBars, 
+  faCircle,
+  faTerminal,
+  faChartLine,
+  faShieldHalved,
+  faGear
+} from '@fortawesome/free-solid-svg-icons';
+import { faFontAwesome } from '@fortawesome/free-brands-svg-icons';
+
+library.add(
+  faLayerGroup, 
+  faChartPie, 
+  faMicrochip, 
+  faUserShield, 
+  faBookBookmark, 
+  faBars, 
+  faCircle,
+  faTerminal,
+  faChartLine,
+  faShieldHalved,
+  faGear,
+  faFontAwesome
+);
+
 const MODULES = [
   { id: 'universe' as ModuleId, name: 'Universe Construction', icon: Layers, description: 'Slice and dice based on geography, sectors, and factors.' },
   { id: 'analytics' as ModuleId, name: 'Portfolio Dashboard', icon: BarChart3, description: 'Interactive visualization of portfolio allocation, performance, and ESG.' },
@@ -367,14 +400,16 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
                 activeModule === module.id ? "text-[#00FF41]" : "text-[#52525B]"
               )}
             >
-              <i className={cn(
-                "text-lg",
-                module.id === 'universe' ? "fas fa-layer-group" :
-                module.id === 'analytics' ? "fas fa-chart-pie" :
-                module.id === 'strategy' ? "fas fa-microchip" :
-                module.id === 'admin' ? "fas fa-user-shield" :
-                module.id === 'docs' ? "fas fa-book-bookmark" : "fas fa-circle"
-              )}></i>
+              <FontAwesomeIcon 
+                icon={
+                  module.id === 'universe' ? faLayerGroup :
+                  module.id === 'analytics' ? faChartPie :
+                  module.id === 'strategy' ? faMicrochip :
+                  module.id === 'admin' ? faUserShield :
+                  module.id === 'docs' ? faBookBookmark : faCircle
+                } 
+                className="text-lg"
+              />
               <span className="text-[8px] font-mono whitespace-nowrap">{module.id.toUpperCase()}</span>
             </button>
           ))}
@@ -382,7 +417,7 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
              className="flex flex-col items-center gap-1 text-[#52525B]"
           >
-             <i className="fas fa-bars text-lg"></i>
+             <FontAwesomeIcon icon={faBars} className="text-lg" />
              <span className="text-[8px] font-mono">MENU</span>
           </button>
         </div>

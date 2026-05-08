@@ -1,12 +1,27 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faMobileScreenButton, 
+  faTerminal, 
+  faBars, 
+  faPaperPlane, 
+  faHouse, 
+  faChartLine, 
+  faBriefcase, 
+  faMicrochip, 
+  faGear, 
+  faFingerprint, 
+  faSatelliteDish, 
+  faVault 
+} from '@fortawesome/free-solid-svg-icons';
 
 export default function MobilePreview() {
   return (
     <div className="flex flex-col items-center justify-center h-full space-y-8 py-12">
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold tracking-tight text-white flex items-center justify-center gap-3">
-          <i className="fas fa-mobile-screen-button text-[#00FF41]"></i>
+          <FontAwesomeIcon icon={faMobileScreenButton} className="text-[#00FF41]" />
           MOBILE_APP_PREVIEW
         </h2>
         <p className="text-[#71717A] text-sm">
@@ -24,11 +39,11 @@ export default function MobilePreview() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded bg-[#00FF41] flex items-center justify-center text-black">
-                <i className="fas fa-terminal text-xs"></i>
+                <FontAwesomeIcon icon={faTerminal} className="text-xs" />
               </div>
               <span className="font-mono font-bold text-xs tracking-tighter">BITA_MOBILE</span>
             </div>
-            <i className="fas fa-bars text-[#71717A]"></i>
+            <FontAwesomeIcon icon={faBars} className="text-[#71717A]" />
           </div>
 
           {/* Chat Mockup */}
@@ -58,30 +73,30 @@ export default function MobilePreview() {
           <div className="mt-4 pt-4 border-t border-[#1F1F23]">
             <div className="flex items-center gap-2 bg-[#16161A] border border-[#1F1F23] rounded-full px-4 py-2">
               <span className="text-[10px] text-[#52525B] flex-1">Query terminal...</span>
-              <i className="fas fa-paper-plane text-[#00FF41] text-xs"></i>
+              <FontAwesomeIcon icon={faPaperPlane} className="text-[#00FF41] text-xs" />
             </div>
           </div>
 
           {/* Bottom Navigation (FontAwesome) */}
           <div className="mt-6 flex items-center justify-around pb-2 border-t border-white/5 pt-3">
              <div className="flex flex-col items-center gap-1 text-[#00FF41]">
-                <i className="fas fa-house text-sm"></i>
+                <FontAwesomeIcon icon={faHouse} className="text-sm" />
                 <span className="text-[8px] font-bold">HOME</span>
              </div>
              <div className="flex flex-col items-center gap-1 text-[#52525B]">
-                <i className="fas fa-chart-line text-sm"></i>
+                <FontAwesomeIcon icon={faChartLine} className="text-sm" />
                 <span className="text-[8px]">MKTS</span>
              </div>
              <div className="flex flex-col items-center gap-1 text-[#52525B]">
-                <i className="fas fa-briefcase text-sm"></i>
+                <FontAwesomeIcon icon={faBriefcase} className="text-sm" />
                 <span className="text-[8px]">PORT</span>
              </div>
              <div className="flex flex-col items-center gap-1 text-[#52525B]">
-                <i className="fas fa-microchip text-sm"></i>
+                <FontAwesomeIcon icon={faMicrochip} className="text-sm" />
                 <span className="text-[8px]">AUTO</span>
              </div>
              <div className="flex flex-col items-center gap-1 text-[#52525B]">
-                <i className="fas fa-gear text-sm"></i>
+                <FontAwesomeIcon icon={faGear} className="text-sm" />
                 <span className="text-[8px]">SET</span>
              </div>
           </div>
@@ -90,15 +105,15 @@ export default function MobilePreview() {
 
       <div className="grid grid-cols-3 gap-8 text-[#52525B]">
         <div className="flex flex-col items-center gap-2">
-          <i className="fas fa-fingerprint text-xl"></i>
+          <FontAwesomeIcon icon={faFingerprint} className="text-xl" />
           <span className="text-[9px] font-mono">ENCRYPTED</span>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <i className="fas fa-satellite-dish text-xl"></i>
+          <FontAwesomeIcon icon={faSatelliteDish} className="text-xl" />
           <span className="text-[9px] font-mono">LIVE_SYNC</span>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <i className="fas fa-vault text-xl"></i>
+          <FontAwesomeIcon icon={faVault} className="text-xl" />
           <span className="text-[9px] font-mono">ASSET_SAFE</span>
         </div>
       </div>

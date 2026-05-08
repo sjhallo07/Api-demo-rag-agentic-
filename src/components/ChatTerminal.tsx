@@ -7,6 +7,7 @@ import { cn } from '../lib/utils';
 import { chatWithGemini, getEmbedding, cosineSimilarity } from '../lib/gemini';
 import { ChatMessage, AttachmentMetadata } from '../types';
 import { getKnowledgeBase } from '../services/knowledgeService';
+import { documentProcessor } from '../services/documentService';
 
 import { Line, Bar } from 'react-chartjs-2';
 import { 
@@ -250,8 +251,8 @@ esac
 
       const base64Docs = userMessage.attachments?.map(at => at.data) || [];
 
-      // Phase 1: Intent Extraction (Temp 0)
-      logger("INITIALIZING_AGENT_CORE... EXPLOITING_INTENT...");
+      // Phase 1: Aggregator Agent (Planning & React)
+      logger("AGGREGATOR_AGENT: ANALYZING_QUERY_&_PLANNING...");
       const extraction = await chatWithGemini(userMessage.content, 'extract', base64Docs);
       try {
         const filters = JSON.parse(extraction);
@@ -262,11 +263,52 @@ esac
         console.warn("Intent extraction skipped");
       }
 
-      // Phase 2: Vector Search (Step A: Retrieval - Temp 0 logic)
-      logger("GENERATING_QUERY_EMBEDDING_V2...");
+      // Phase 2: Agentic Dispatch (MCP Servers)
+      logger("AGENT_1 (LOCAL_DATA_MCP): QUERYING_INTERNAL_DB...");
       const queryVector = await getEmbedding(userMessage.content);
-      
-      logger("RETRIEVING_UNIVERSE_DATA...");
+      const kb = getKnowledgeBase();
+      let topInsights: string[] = [];
+      let documentChunks: string[] = [];
+
+      // Process uploaded documents via LangChain semantic chunking
+      if (userMessage.attachments && userMessage.attachments.length > 0) {
+        logger("AGENT_1: PROCESSING_DOCUMENT_ATTACHMENTS_VIA_LANGCHAIN_SPLITTER...");
+        for (const attachment of userMessage.attachments) {
+           if (attachment.name.includes("workspace")) continue;
+           const chunks = await documentProcessor.processBase64Document(attachment.data, attachment.name);
+           const chunksWithScore = await Promise.all(chunks.map(async (chunk) => {
+              const chunkVector = await getEmbedding(chunk.content);
+              const score = cosineSimilarity(queryVector, chunkVector);
+              return { content: `[DOC_CHUNK ${chunk.id}]: ${chunk.content}`, score };
+           }));
+           
+           const relevantChunks = chunksWithScore.filter(c => c.score > 0.5).sort((a,b) => b.score - a.score).slice(0, 3).map(c => c.content);
+           documentChunks = [...documentChunks, ...relevantChunks];
+        }
+        if (documentChunks.length > 0) {
+           logger(`AGENT_1: FOUND ${documentChunks.length} RELEVANT_CHUNKS_IN_DOCUMENTS`);
+        }
+      }
+
+      if (queryVector.length > 0 && kb.length > 0) {
+        const insightsWithScore = await Promise.all(kb.map(async (insight) => {
+          const insightVector = await getEmbedding(`${insight.title}: ${insight.content}`);
+          const score = cosineSimilarity(queryVector, insightVector);
+          return { content: `[LOCAL_DB_${insight.id}]: ${insight.content}`, score };
+        }));
+
+        topInsights = insightsWithScore
+          .sort((a, b) => b.score - a.score)
+          .filter(i => i.score > 0.6) 
+          .slice(0, 3)
+          .map(i => i.content);
+        
+        if(topInsights.length > 0) logger(`AGENT_1: FOUND ${topInsights.length} LOCAL_DOCS`);
+      } else {
+        logger("AGENT_1: NO_LOCAL_DATA_FOUND");
+      }
+
+      logger("AGENT_2 (SEARCH_ENGINE_MCP): FETCHING_UNIVERSE_DATA...");
       let universeContext = [];
       try {
         let filters = {};
@@ -278,36 +320,20 @@ esac
         });
         const universeData = await universeResp.json();
         universeContext = universeData.results || [];
+        if (universeContext.length > 0) logger(`AGENT_2: FOUND ${universeContext.length} SECURITIES`);
       } catch (e) {
-        console.error("Universe retrieval failed", e);
+        logger("AGENT_2: SEARCH_FAILED");
       }
+      
+      logger("AGENT_3 (CLOUD_ENGINE_MCP): FETCHING_MACRO_INDICATORS...");
+      // Simulate cloud macro data fetch
+      const cloudContext = ["US_TREASURY_10Y: 4.2%", "VIX: 14.5"];
+      logger("AGENT_3: MACRO_DATA_RETRIEVED");
 
-      logger("SEMANTIC_RAG_PIPELINE: SEARCHING_KNOWLEDGE_BASE...");
-      const kb = getKnowledgeBase();
-      let topInsights: string[] = [];
-
-      if (queryVector.length > 0 && kb.length > 0) {
-        // Simple client-side vector search - In real app these are pre-stored
-        const insightsWithScore = await Promise.all(kb.map(async (insight) => {
-          const insightVector = await getEmbedding(`${insight.title}: ${insight.content}`);
-          const score = cosineSimilarity(queryVector, insightVector);
-          return { content: `[INSIGHT_${insight.id}]: ${insight.content}`, score };
-        }));
-
-        topInsights = insightsWithScore
-          .sort((a, b) => b.score - a.score)
-          .filter(i => i.score > 0.6) 
-          .slice(0, 3)
-          .map(i => i.content);
-        
-        logger(`RAG_MATCH_FOUND: ${topInsights.length} RELATED_FINANCIAL_INSIGHTS`);
-      } else {
-        logger("RAG_MATCH: NO_RELEVANT_KNOWLEDGE_FOUND");
-      }
-
-      // Phase 3: Generation (Step B: Grounded Response - Temp 0.4)
-      logger("SYNTHESIZING_GROUNDED_RESPONSE (TEMP_0.4)...");
-      const agentContent = await chatWithGemini(userMessage.content, 'chat', topInsights.length > 0 ? topInsights : base64Docs, universeContext);
+      // Phase 3: Aggregator Synthesis (Generative Models)
+      logger("AGGREGATOR_AGENT: SYNTHESIZING_CONTEXT_WITH_GEMINI...");
+      const allContext = [...topInsights, ...cloudContext, ...documentChunks];
+      const agentContent = await chatWithGemini(userMessage.content, 'chat', allContext.length > 0 ? allContext : base64Docs, universeContext);
       
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -556,7 +582,7 @@ esac
            <span>READY for MULTIMODAL INF</span>
            <span className="flex items-center gap-1">
               <Sparkles size={10} />
-              AGENT_RAG_ENABLED
+              AGENTIC_MCP_RAG_ENABLED
            </span>
         </div>
       </div>

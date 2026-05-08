@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   Filter, 
@@ -16,8 +16,18 @@ import {
   FileCode,
   Settings2,
   Clock,
-  BrainCircuit
+  BrainCircuit,
+  Plus,
+  Layers
 } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faGlobe, 
+  faArrowTrendUp, 
+  faArrowTrendDown, 
+  faCircleCheck,
+  faClock
+} from '@fortawesome/free-solid-svg-icons';
 import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -71,6 +81,7 @@ export default function UniverseExplorer() {
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['ticker', 'score', 'esg']);
   const [themeExposureHistory, setThemeExposureHistory] = useState<any[]>([]);
+  const [batchQueue, setBatchQueue] = useState<string[]>([]);
 
   const COLUMNS = [
     { id: 'ticker', label: 'TICKER' },
@@ -158,11 +169,44 @@ export default function UniverseExplorer() {
     return () => window.removeEventListener('bit_query_universe', handleChatQuery);
   }, []);
 
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      performSearch(query, { sector: selectedSector, themes: selectedThemes, minEsg });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const clearFilters = () => {
     setSelectedThemes([]);
     setMinEsg(0);
     setActiveThemeFilter(null);
     performSearch(query, { themes: [], sector: selectedSector, minEsg: 0 });
+  };
+
+  const addToBatchQueue = () => {
+    if (query.trim()) {
+      setBatchQueue([...batchQueue, query]);
+      setQuery('');
+    }
+  };
+
+  const removeFromBatchQueue = (index: number) => {
+    setBatchQueue(batchQueue.filter((_, i) => i !== index));
+  };
+
+  const processBatchQueue = () => {
+    if (batchQueue.length > 0) {
+      const combinedQuery = batchQueue.join(" OR ");
+      performSearch(combinedQuery, { sector: selectedSector, themes: selectedThemes, minEsg });
+      setQuery(combinedQuery);
+      setBatchQueue([]);
+    }
   };
 
   const handleApplySmartFilters = (filters: any) => {
@@ -321,7 +365,7 @@ export default function UniverseExplorer() {
       {/* Global Indices Ticker Bar */}
       <div className="flex items-center gap-6 overflow-x-auto pb-2 scrollbar-hide border-b border-[#1F1F23]">
         <div className="flex items-center gap-2 shrink-0">
-          <Globe size={14} className="text-[#00FF41]" />
+          <FontAwesomeIcon icon={faGlobe} className="text-[#00FF41] text-xs" />
           <span className="text-[10px] font-mono font-bold text-[#52525B] uppercase tracking-widest leading-none">Global_Indices</span>
         </div>
         {[
@@ -331,20 +375,24 @@ export default function UniverseExplorer() {
           { label: 'RUSSELL 2k', value: '2,045.10', change: '+2.10%' },
           { label: 'VIX_VOLAT', value: '14.25', change: '-3.45%' },
         ].map((index, i) => (
-          <div key={i} className="flex items-center gap-2 shrink-0 bg-[#0D0D0F] border border-[#1F1F23] px-3 py-1 rounded group hover:border-[#00FF41]/30 transition-all cursor-default">
-            <span className="text-[10px] font-mono text-[#71717A] group-hover:text-white transition-colors">{index.label}</span>
-            <span className="text-[10px] font-mono font-bold">{index.value}</span>
+          <div key={i} className="flex items-center gap-2 shrink-0 bg-[#0D0D0F] border border-[#1F1F23] px-3 py-1 rounded group hover:border-[#00FF41]/30 transition-all cursor-default text-[10px] font-mono">
+            <span className="text-[#71717A] group-hover:text-white transition-colors">{index.label}</span>
+            <span className="font-bold">{index.value}</span>
             <span className={cn(
-              "text-[9px] font-mono font-bold",
+              "font-bold flex items-center gap-1",
               index.change.startsWith('+') ? "text-[#00FF41]" : "text-red-500"
             )}>
+              <FontAwesomeIcon 
+                icon={index.change.startsWith('+') ? faArrowTrendUp : faArrowTrendDown} 
+                className="text-[8px]"
+              />
               {index.change}
             </span>
           </div>
         ))}
         <div className="flex-1" />
         <div className="flex items-center gap-2 text-[9px] font-mono text-[#52525B] italic">
-          <Clock size={10} />
+          <FontAwesomeIcon icon={faClock} className="text-[10px]" />
           NY_MARKET_OPEN
         </div>
       </div>
@@ -440,30 +488,74 @@ export default function UniverseExplorer() {
            </div>
         </motion.div>
       ) : (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex-1 min-w-0 relative group order-2 md:order-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525B] group-focus-within:text-[#00FF41] transition-colors" size={18} />
-            <input 
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && performSearch(query)}
-              placeholder="Search universe..."
-              className="w-full bg-[#0D0D0F] border border-[#1F1F23] rounded-md py-2.5 pl-10 pr-24 text-sm focus:outline-none focus:border-[#00FF41]/50 transition-all font-mono"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-               <button 
-                onClick={() => setIsAssistantOpen(true)}
-                className="p-1.5 rounded bg-[#00FF41]/10 border border-[#00FF41]/20 group/ai hover:bg-[#00FF41]/20 transition-all flex items-center gap-1.5"
-               >
-                  <BrainCircuit className="text-[#00FF41]" size={14} />
-                  <span className="text-[8px] font-mono text-[#00FF41] font-bold group-hover/ai:mr-1 transition-all">AI_ORCHESTRATE</span>
-               </button>
-               <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/10 opacity-30">
-                  <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
-                  <span className="text-[8px] font-mono text-white font-bold tracking-tighter">DATA_SYNC [OK]</span>
-               </div>
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="flex-1 min-w-0 relative group order-2 md:order-1 flex flex-col gap-2">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#52525B] group-focus-within:text-[#00FF41] transition-colors" size={18} />
+              <input 
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                      addToBatchQueue();
+                    } else {
+                      performSearch(query);
+                    }
+                  }
+                }}
+                placeholder="Search universe... (Shift+Enter to queue)"
+                className="w-full bg-[#0D0D0F] border border-[#1F1F23] rounded-md py-2.5 pl-10 pr-32 text-sm focus:outline-none focus:border-[#00FF41]/50 transition-all font-mono"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                 <button
+                    onClick={addToBatchQueue}
+                    disabled={!query.trim()}
+                    title="Add to Query Batch"
+                    className="p-1.5 rounded bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all disabled:opacity-30 flex items-center justify-center"
+                 >
+                    <Plus size={14} className="text-blue-500" />
+                 </button>
+                 <button 
+                  onClick={() => setIsAssistantOpen(true)}
+                  className="p-1.5 rounded bg-[#00FF41]/10 border border-[#00FF41]/20 group/ai hover:bg-[#00FF41]/20 transition-all flex items-center gap-1.5"
+                 >
+                    <BrainCircuit className="text-[#00FF41]" size={14} />
+                    <span className="hidden sm:inline text-[8px] font-mono text-[#00FF41] font-bold group-hover/ai:mr-1 transition-all">AI_ORCHESTRATE</span>
+                 </button>
+                 <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/10 opacity-30">
+                    <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
+                    <span className="text-[8px] font-mono text-white font-bold tracking-tighter">DATA_SYNC [OK]</span>
+                 </div>
+              </div>
             </div>
+            
+            {batchQueue.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} 
+                className="flex flex-wrap items-center gap-2 p-2 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-lg"
+              >
+                <div className="flex items-center gap-2 text-[10px] font-mono text-[#52525B]">
+                  <Layers size={14} />
+                  <span>BATCH_QUEUE:</span>
+                </div>
+                {batchQueue.map((q, i) => (
+                  <span key={i} className="flex items-center gap-1 px-2 py-1 bg-[#16161A] text-xs font-mono text-[#E4E4E7] rounded border border-[#27272A]">
+                    {q}
+                    <button onClick={() => removeFromBatchQueue(i)} className="text-red-400 hover:text-red-300">
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                <button 
+                  onClick={processBatchQueue}
+                  className="ml-auto px-3 py-1 bg-[#00FF41]/10 text-[#00FF41] text-[10px] font-mono font-bold rounded border border-[#00FF41]/30 hover:bg-[#00FF41]/20 transition-colors"
+                >
+                  PROCESS_QUEUE ({batchQueue.length})
+                </button>
+              </motion.div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 order-1 md:order-2">

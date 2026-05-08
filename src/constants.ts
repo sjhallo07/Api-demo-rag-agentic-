@@ -22,3 +22,9 @@ export const ENDPOINTS = {
 
 export const SESSION_KEY = "BITA_SESSION_TOKEN";
 export const REFRESH_KEY = "BITA_REFRESH_TOKEN";
+
+export const UNIVERSE_METADATA = {
+  SECTORS: ["Technology", "Semiconductors", "Consumer", "Automotive", "Finance", "Healthcare", "Energy"],
+  THEMES: ["Consumer Tech", "Enterprise Software", "Lithography", "AI/GPU", "Luxury", "EV Transition", "Global Banking", "Personal Care"],
+  GEOGRAPHIES: ["Europe", "North America", "Asia", "Emerging Markets"]
+} as const;

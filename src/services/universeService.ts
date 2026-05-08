@@ -67,23 +67,33 @@ export function searchUniverse(query?: string, filters?: any) {
 
   if (query) {
     const q = query.toLowerCase();
-    // Simulate "Sentence-Transformers" by checking for semantic keyword overlap and themes
+    // Advanced semantic simulation
     results = results.map(i => {
       let semanticScore = 0;
       const features = [i.name, i.sector, i.theme, i.geography].join(' ').toLowerCase();
       
-      // Exact matches
+      // Exact and substring scoring
       if (features.includes(q)) semanticScore += 0.5;
       
-      // Theme matching (simulating vector proximity)
-      const themes: Record<string, string[]> = {
-        'ai': ['nvidia', 'gpu', 'semiconductor', 'tech'],
-        'luxury': ['lvmh', 'consumer', 'premium'],
-        'green': ['esg', 'aaa', 'clean', 'ev'],
-        'safety': ['hedge', 'finance', 'passive']
+      // Factor intent detection
+      if (q.includes('growth') || q.includes('momentum')) semanticScore += (i.momentum * 0.4);
+      if (q.includes('value') || q.includes('cheap')) semanticScore += (1 / i.pe * 5);
+      if (q.includes('safe') || q.includes('stable')) semanticScore += (i.score * 0.3);
+      if (q.includes('green') || q.includes('esg') || q.includes('clean')) {
+        const esgMap: Record<string, number> = { 'AAA': 1, 'AA': 0.8, 'A': 0.6, 'BBB': 0.4, 'B': 0.2 };
+        semanticScore += (esgMap[i.esg] || 0) * 0.5;
+      }
+      
+      // Theme matching (simulating vector proximity for top megatrends)
+      const semanticVectors: Record<string, string[]> = {
+        'ai': ['nvidia', 'gpu', 'semiconductor', 'tech', 'intelligence', 'automation'],
+        'future': ['ev', 'lithography', 'ai', 'transition'],
+        'luxury': ['lvmh', 'premium', 'high-end', 'personal care', 'l\'oreal'],
+        'bank': ['finance', 'hsbc', 'global banking', 'yield'],
+        'chips': ['asml', 'semiconductors', 'nvidia', 'intel', 'hardware']
       };
 
-      Object.entries(themes).forEach(([key, words]) => {
+      Object.entries(semanticVectors).forEach(([key, words]) => {
         if (q.includes(key)) {
           if (words.some(w => features.includes(w))) semanticScore += 0.4;
         }

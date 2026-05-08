@@ -16,6 +16,27 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Security, StrategyTemplate } from '../types';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Filler,
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  ChartTooltip,
+  Filler
+);
 
 interface UserProfileState {
   sectors: string[];
@@ -34,6 +55,8 @@ export default function StrategyBuilder() {
   const [templates, setTemplates] = useState<StrategyTemplate[]>([]);
   const [templateName, setTemplateName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [isBacktesting, setIsBacktesting] = useState(false);
+  const [backtestData, setBacktestData] = useState<any[] | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('strategy_templates');
@@ -79,10 +102,12 @@ export default function StrategyBuilder() {
     if (!profile.horizon || !profile.risk || profile.sectors.length === 0) return;
     
     setIsGenerating(true);
+    setBacktestData(null);
+    setIsBacktesting(false);
     // Simulate complex strategy generation with RAG Agent
     setTimeout(() => {
       setStrategy({
-        name: `${profile.risk?.toUpperCase()} ${profile.sectors[0].toUpperCase()} CORE`,
+        name: `${profile.risk?.toUpperCase()} ${profile.sectors[0]?.toUpperCase() || 'CORE'} STRATEGY`,
         allocation: [
           { name: 'Core Assets', weight: 60, color: '#00FF41' },
           { name: 'Growth Satellite', weight: 25, color: '#3B82F6' },
@@ -96,6 +121,27 @@ export default function StrategyBuilder() {
       });
       setIsGenerating(false);
     }, 2000);
+  };
+
+  const runBacktest = () => {
+    setIsBacktesting(true);
+    setBacktestData(null);
+    setTimeout(() => {
+      const data = [];
+      let baseValue = 10000;
+      const now = new Date();
+      for (let i = 30; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i * 7);
+        baseValue = baseValue * (1 + (Math.random() * 0.04 - 0.015));
+        data.push({
+          date: date.toLocaleDateString(),
+          value: parseFloat(baseValue.toFixed(2))
+        });
+      }
+      setBacktestData(data);
+      setIsBacktesting(false);
+    }, 1500);
   };
 
   return (
@@ -380,15 +426,103 @@ export default function StrategyBuilder() {
                 <div className="pt-4 border-t border-[#1F1F23] flex flex-col md:flex-row md:items-center justify-between gap-4 text-[10px] font-mono text-[#52525B]">
                    <p className="flex items-center gap-2 italic">
                      <BrainCircuit size={14} />
-                     Generated via BITA Intelligence Agent v4.2 [LLM-GROUNDED]
+                     Generated via BITA Intelligence Agent v4.2
                    </p>
-                   <button 
-                    onClick={() => setStrategy(null)}
-                    className="text-[#00FF41] hover:underline self-start md:self-auto"
-                   >
-                    RE-OPTIMIZE_PARAMS
-                   </button>
+                   <div className="flex items-center gap-3 self-start md:self-auto">
+                     {!backtestData && (
+                       <button 
+                         onClick={runBacktest}
+                         disabled={isBacktesting}
+                         className="flex items-center gap-1 text-[#3B82F6] hover:underline disabled:opacity-50"
+                       >
+                         {isBacktesting ? <Clock className="animate-spin" size={12} /> : <TrendingUp size={12} />}
+                         {isBacktesting ? "SIMULATING..." : "RUN_BACKTEST"}
+                       </button>
+                     )}
+                     <button 
+                      onClick={() => { setStrategy(null); setBacktestData(null); }}
+                      className="text-[#00FF41] hover:underline"
+                     >
+                      RE-OPTIMIZE_PARAMS
+                     </button>
+                   </div>
                 </div>
+
+                {/* Backtest Section */}
+                <AnimatePresence>
+                  {backtestData && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-6 border-t border-[#1F1F23] pt-6 space-y-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[11px] font-mono text-[#3B82F6] uppercase flex items-center gap-2">
+                          <TrendingUp size={14} /> Backtest_Simulation_Results
+                        </h4>
+                        <div className="text-[10px] font-mono text-[#E4E4E7]">
+                          Init: $10,000 → End: ${backtestData[backtestData.length - 1].value.toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="h-48 w-full bg-[#0D0D0F] border border-[#1F1F23] rounded-md p-2">
+                        <Line
+                          data={{
+                            labels: backtestData.map(d => d.date),
+                            datasets: [{
+                              label: 'Portfolio Value',
+                              data: backtestData.map(d => d.value),
+                              borderColor: '#3B82F6',
+                              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                              borderWidth: 2,
+                              pointRadius: 0,
+                              pointHoverRadius: 4,
+                              fill: true,
+                              tension: 0.4
+                            }]
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                              x: {
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                ticks: {
+                                  color: '#52525B',
+                                  font: { size: 8 },
+                                  maxTicksLimit: 5
+                                }
+                              },
+                              y: {
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                ticks: {
+                                  color: '#52525B',
+                                  font: { size: 8 },
+                                  callback: (val) => `$${val}`
+                                }
+                              }
+                            },
+                            plugins: {
+                              legend: { display: false },
+                              tooltip: {
+                                backgroundColor: '#0D0D0F',
+                                titleColor: '#3B82F6',
+                                bodyColor: '#E4E4E7',
+                                borderColor: '#1F1F23',
+                                borderWidth: 1,
+                                titleFont: { family: 'monospace', size: 10 },
+                                bodyFont: { family: 'monospace', size: 10 },
+                                callbacks: {
+                                  label: (context) => `$${context.raw}`
+                                }
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>

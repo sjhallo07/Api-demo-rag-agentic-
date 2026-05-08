@@ -221,22 +221,22 @@ export default function ApiDocs() {
              <div className="space-y-6">
                 <div className="flex items-center gap-3 border-b border-[#1F1F23] pb-4">
                    <Terminal className="text-[#00FF41]" size={20} />
-                   <h4 className="text-sm font-bold font-mono">TERMUX_ANDROID_INTEGRATION</h4>
+                   <h4 className="text-sm font-bold font-mono">APP TERMINAL \& LOCAL CLI INTEGRATION</h4>
                 </div>
 
                 <div className="space-y-4">
                    <div className="p-4 bg-[#16161A] border border-[#1F1F23] rounded-md">
                       <p className="text-xs text-[#A1A1AA] mb-4">
-                        To enable deep integration with your Android device, run the following setup script in your Termux environment. 
-                        This connects your local shell directly to the BITA Intelligence Orchestrator.
+                        BITA provides two ways to work from the terminal: in-app or via your Native PC (bash/zsh). 
+                        <br/><br/><strong className="text-white">In-App Chat Terminal Commands:</strong><br/>- <code>/export-data</code> : Backup your local workspace to JSON.<br/>- <code>/export-cli</code> : Downloads the native <code>bita.sh</code> shell script.<br/><br/><strong className="text-white">Native PC / Termux Interface Setup:</strong><br/>Run this script to connect your local shell directly to the BITA Intelligence Orchestrator.
                       </p>
                       
                       <div className="relative group">
                          <pre className="bg-black p-4 rounded text-[#00FF41] text-[10px] font-mono overflow-x-auto border border-[#00FF41]/20">
-                            {`pkg install jq curl -y\n\ncat << 'EOF' > bita\n#!/bin/bash\n# BITA COMMAND CLI\nURL="${window.location.origin}/api/agent/chat"\nQUERY=$*\ncurl -s -X POST "$URL" -H "Content-Type: application/json" -d "{\\"query\\": \\"$QUERY\\"}" | jq -r ".content"\nEOF\n\nchmod +x bita\nmv bita $PREFIX/bin/\n\n# Usage:\n# bita "What are top ESG stocks?"`}
+                            {`cat << 'EOF' > bita\n#!/bin/bash\n# BITA COMMAND CLI\nURL="${window.location.origin}/api/agent/chat"\nQUERY=$*\ncurl -s -X POST "$URL" -H "Content-Type: application/json" -d "{\\"query\\": \\"$QUERY\\"}" | jq -r ".content"\nEOF\n\nchmod +x bita\nsudo mv bita /usr/local/bin/\n\n# Usage:\n# bita "What are top ESG stocks?"`}
                          </pre>
                          <button 
-                           onClick={() => navigator.clipboard.writeText(`pkg install jq curl -y\ncat << 'EOF' > bita\n#!/bin/bash\nURL="${window.location.origin}/api/agent/chat"\nQUERY=$*\ncurl -s -X POST "$URL" -H "Content-Type: application/json" -d "{\\"query\\": \\"$QUERY\\"}" | jq -r ".content"\nEOF\nchmod +x bita\nmv bita $PREFIX/bin/`)}
+                           onClick={() => navigator.clipboard.writeText(`cat << 'EOF' > bita\n#!/bin/bash\nURL="${window.location.origin}/api/agent/chat"\nQUERY=$*\ncurl -s -X POST "$URL" -H "Content-Type: application/json" -d "{\\"query\\": \\"$QUERY\\"}" | jq -r ".content"\nEOF\nchmod +x bita\nsudo mv bita /usr/local/bin/`)}
                            className="absolute top-2 right-2 p-1.5 bg-[#1F1F23] rounded text-[#71717A] hover:text-[#00FF41] transition-all opacity-0 group-hover:opacity-100"
                          >
                             <Code2 size={12} />

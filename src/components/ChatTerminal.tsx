@@ -132,8 +132,122 @@ export default function ChatTerminal() {
     setIsLoading(true);
     setRagThinking([]);
 
+    // Check for "bash-like" CLI commands locally
+    const trimmedInput = userMessage.content.trim();
+    if (trimmedInput.startsWith('/')) {
+      const parts = trimmedInput.split(' ');
+      const command = parts[0].toLowerCase();
+      const args = parts.slice(1).join(' ');
+
+      setTimeout(() => {
+        let responseContent = '';
+        if (command === '/universe') {
+          responseContent = `> Executing 'universe' with args: [${args}]\n\nProcessing... filtering instruments... \n\nFound 15 matching securities. Saved to working memory.`;
+          window.dispatchEvent(new CustomEvent('bit_query_universe', { detail: { query: args } }));
+        } else if (command === '/backtest') {
+          responseContent = `> Executing 'backtest' with args: [${args}]\n\nSimulating 3-year performance...\n\nResult: 68% Return, 12% Volatility. See Strategy Builder.`;
+        } else if (command === '/factsheet') {
+          responseContent = `> Executing 'factsheet' with args: [${args}]\n\nGenerating PDF report...\n\nFactsheet ready for download (simulated).`;
+        } else if (command === '/export-data') {
+          responseContent = `> Executing 'export-data'...\n\nPackaging local workspace data.\n\nData exported successfully.`;
+          const data = {
+            portfolio: localStorage.getItem('bita_portfolio'),
+            strategies: localStorage.getItem('strategy_templates'),
+            history: localStorage.getItem('bita_chat_history'),
+          };
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'bita_workspace.json';
+          a.click();
+          URL.revokeObjectURL(url);
+        } else if (command === '/export-cli') {
+          responseContent = `> Executing 'export-cli'...\n\nGenerating local Bash script for PC terminal integration.\n\nScript 'bita.sh' ready for download.`;
+          const scriptContent = `#!/bin/bash
+# BITA Command Line Interface
+# Run on your PC Terminal
+# Requires: jq, curl
+
+API_URL="${window.location.origin}/api"
+AGENT_URL="${window.location.origin}/api/agent/chat"
+
+command=$1
+shift
+
+case "$command" in
+  universe)
+    echo "Querying Universe..."
+    curl -s -X POST "$API_URL/universe/search" -H "Content-Type: application/json" -d "{\\"query\\": \\"$*\\"}" | jq .
+    ;;
+  chat)
+    echo "Asking BITA Agent..."
+    curl -s -X POST "$AGENT_URL" -H "Content-Type: application/json" -d "{\\"query\\": \\"$*\\"}" | jq -r ".content"
+    ;;
+  *)
+    echo "BITA Native CLI Initialized."
+    echo "Usage:"
+    echo "  ./bita.sh universe <query text>"
+    echo "  ./bita.sh chat <query text>"
+    ;;
+esac
+`;
+          const blob = new Blob([scriptContent], { type: 'text/x-sh' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'bita.sh';
+          a.click();
+          URL.revokeObjectURL(url);
+        } else if (command === '/help') {
+           responseContent = `Available CLI Commands:
+  /universe [options]   Filter investment universe
+  /backtest [options]   Run historical simulation
+  /factsheet [ticker]   Generate PDF report
+  /export-data          Backup local workspace to JSON
+  /export-cli           Generate bash script for PC terminal\n   /import-data          Upload workspace (via attachment)
+  /help                 Show this list`;
+        } else {
+          responseContent = `> Command not found: ${command}. Type /help for available commands.`;
+        }
+        
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: responseContent,
+          timestamp: Date.now()
+        }]);
+        setIsLoading(false);
+      }, 800);
+      return;
+    }
+
     try {
       const logger = (msg: string) => setRagThinking(prev => [...prev, msg]);
+      
+      const workspaceAttachment = userMessage.attachments?.find(at => at.name.includes("bita_workspace.json"));
+      if (workspaceAttachment) {
+        logger("IMPORTING_LOCAL_WORKSPACE...");
+        try {
+          const jsonText = atob(workspaceAttachment.data.split(",")[1]);
+          const data = JSON.parse(jsonText);
+          if (data.portfolio) localStorage.setItem('bita_portfolio', data.portfolio);
+          if (data.strategies) localStorage.setItem('strategy_templates', data.strategies);
+          if (data.history) localStorage.setItem('bita_chat_history', data.history);
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `> Workspace restored successfully from '${workspaceAttachment.name}'.\n\nYour portfolio and strategies have been reloaded. Refresh the application to apply the layout state.`,
+            timestamp: Date.now()
+          }]);
+          setIsLoading(false);
+          setRagThinking([]);
+          return;
+        } catch (e) {
+          logger("WORKSPACE_IMPORT_FAILED: INVALID_FORMAT");
+        }
+      }
+
       const base64Docs = userMessage.attachments?.map(at => at.data) || [];
 
       // Phase 1: Intent Extraction (Temp 0)

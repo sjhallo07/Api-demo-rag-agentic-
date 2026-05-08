@@ -15,25 +15,40 @@ import {
   FileText,
   FileCode,
   Settings2,
-  Clock
+  Clock,
+  BrainCircuit
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  Cell,
-  LineChart,
-  Line,
-  Legend
-} from 'recharts';
+import { Line, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend as ChartLegend,
+  Filler,
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  ChartTooltip,
+  ChartLegend,
+  Filler
+);
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Security, UniverseQueryResponse } from '../types';
 import { addAssetToPortfolio } from '../services/portfolioService';
+import { UNIVERSE_METADATA } from '../constants';
+import SmartUniverseAssistant from './SmartUniverseAssistant';
 
 export default function UniverseExplorer() {
   const [query, setQuery] = useState('');
@@ -41,6 +56,7 @@ export default function UniverseExplorer() {
   const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
   const [minEsg, setMinEsg] = useState<number>(0);
   const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [securities, setSecurities] = useState<Security[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSecurity, setSelectedSecurity] = useState<Security | null>(null);
@@ -64,8 +80,8 @@ export default function UniverseExplorer() {
     { id: 'esg', label: 'ESG' },
   ];
 
-  const SECTORS = ["Technology", "Semiconductors", "Consumer", "Automotive", "Finance", "Healthcare", "Energy"];
-  const THEMES = ["Consumer Tech", "Enterprise Software", "Lithography", "AI/GPU", "Luxury", "EV Transition", "Global Banking", "Personal Care"];
+  const SECTORS = UNIVERSE_METADATA.SECTORS;
+  const THEMES = UNIVERSE_METADATA.THEMES;
 
   const getThemeAssetCount = (theme: string) => {
     // In a real app, this would come from the API
@@ -147,6 +163,19 @@ export default function UniverseExplorer() {
     setMinEsg(0);
     setActiveThemeFilter(null);
     performSearch(query, { themes: [], sector: selectedSector, minEsg: 0 });
+  };
+
+  const handleApplySmartFilters = (filters: any) => {
+    if (filters.sector) setSelectedSector(filters.sector);
+    if (filters.themes) setSelectedThemes(filters.themes);
+    if (filters.minEsg) setMinEsg(filters.minEsg);
+    if (filters.query) setQuery(filters.query);
+    
+    performSearch(filters.query || query, {
+        sector: filters.sector || selectedSector,
+        themes: filters.themes || selectedThemes,
+        minEsg: filters.minEsg || minEsg
+    });
   };
 
   const exportToCSV = () => {
@@ -422,10 +451,17 @@ export default function UniverseExplorer() {
               placeholder="Search universe..."
               className="w-full bg-[#0D0D0F] border border-[#1F1F23] rounded-md py-2.5 pl-10 pr-24 text-sm focus:outline-none focus:border-[#00FF41]/50 transition-all font-mono"
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-2 pointer-events-none">
-               <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#00FF41]/5 border border-[#00FF41]/10">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+               <button 
+                onClick={() => setIsAssistantOpen(true)}
+                className="p-1.5 rounded bg-[#00FF41]/10 border border-[#00FF41]/20 group/ai hover:bg-[#00FF41]/20 transition-all flex items-center gap-1.5"
+               >
+                  <BrainCircuit className="text-[#00FF41]" size={14} />
+                  <span className="text-[8px] font-mono text-[#00FF41] font-bold group-hover/ai:mr-1 transition-all">AI_ORCHESTRATE</span>
+               </button>
+               <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/10 opacity-30">
                   <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
-                  <span className="text-[8px] font-mono text-[#00FF41] font-bold">SESSION_ACTIVE</span>
+                  <span className="text-[8px] font-mono text-white font-bold tracking-tighter">DATA_SYNC [OK]</span>
                </div>
             </div>
           </div>
@@ -782,34 +818,53 @@ export default function UniverseExplorer() {
               </div>
               
               <div className="flex-1 w-full">
-                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={filteredSecurities}>
-                       <CartesianGrid strokeDasharray="3 3" stroke="#1F1F23" vertical={false} />
-                       <XAxis 
-                         dataKey="id" 
-                         axisLine={false} 
-                         tickLine={false} 
-                         tick={{ fill: '#52525B', fontSize: 10, fontFamily: 'monospace' }}
-                         dy={10}
-                       />
-                       <YAxis hide />
-                       <Tooltip 
-                         cursor={{ fill: '#1F1F23', opacity: 0.4 }}
-                         contentStyle={{ backgroundColor: '#0D0D0F', border: '1px solid #1F1F23', borderRadius: '4px', fontSize: '10px', fontFamily: 'monospace' }}
-                         itemStyle={{ color: '#00FF41' }}
-                       />
-                       <Bar dataKey="score" radius={[2, 2, 0, 0]}>
-                          {filteredSecurities.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#00FF41' : '#00A635'} />
-                          ))}
-                       </Bar>
-                       <Bar dataKey="momentum" radius={[2, 2, 0, 0]}>
-                          {filteredSecurities.map((entry, index) => (
-                            <Cell key={`cell-m-${index}`} fill="#3B82F6" opacity={0.6} />
-                          ))}
-                       </Bar>
-                    </BarChart>
-                 </ResponsiveContainer>
+                 <Bar 
+                    data={{
+                      labels: filteredSecurities.map(s => s.id),
+                      datasets: [
+                        {
+                          label: 'Score',
+                          data: filteredSecurities.map(s => s.score),
+                          backgroundColor: filteredSecurities.map((_, i) => i % 2 === 0 ? '#00FF41' : '#00A635'),
+                          borderRadius: 2,
+                        },
+                        {
+                          label: 'Momentum',
+                          data: filteredSecurities.map(s => s.momentum),
+                          backgroundColor: '#3B82F6',
+                          borderRadius: 2,
+                        }
+                      ]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      scales: {
+                        x: {
+                          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                          ticks: {
+                            color: '#52525B',
+                            font: { size: 10, family: 'monospace' }
+                          }
+                        },
+                        y: {
+                          display: false,
+                        }
+                      },
+                      plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                          backgroundColor: '#0D0D0F',
+                          titleColor: '#00FF41',
+                          bodyColor: '#E4E4E7',
+                          borderColor: '#1F1F23',
+                          borderWidth: 1,
+                          titleFont: { family: 'monospace', size: 10 },
+                          bodyFont: { family: 'monospace', size: 10 },
+                        }
+                      }
+                    }}
+                 />
               </div>
            </div>
 
@@ -832,45 +887,65 @@ export default function UniverseExplorer() {
               </div>
               
               <div className="flex-1 w-full">
-                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={themeExposureHistory}>
-                       <CartesianGrid strokeDasharray="3 3" stroke="#1F1F23" vertical={false} strokeOpacity={0.5} />
-                       <XAxis 
-                         dataKey="time" 
-                         axisLine={false} 
-                         tickLine={false} 
-                         tick={{ fill: '#52525B', fontSize: 8, fontFamily: 'monospace' }}
-                         hide={themeExposureHistory.length < 5}
-                       />
-                       <YAxis 
-                         axisLine={false} 
-                         tickLine={false} 
-                         tick={{ fill: '#52525B', fontSize: 8, fontFamily: 'monospace' }}
-                         domain={['auto', 'auto']}
-                       />
-                       <Tooltip 
-                         contentStyle={{ backgroundColor: '#0D0D0F', border: '1px solid #1F1F23', borderRadius: '4px', fontSize: '10px', fontFamily: 'monospace' }}
-                       />
-                       <Legend 
-                         verticalAlign="top" 
-                         align="right"
-                         iconType="circle"
-                         wrapperStyle={{ fontSize: '8px', fontFamily: 'monospace', paddingBottom: '10px' }}
-                       />
-                       {(selectedThemes.length > 0 ? selectedThemes : [THEMES[0], THEMES[1], THEMES[2]]).map((theme, idx) => (
-                         <Line 
-                           key={theme}
-                           type="monotone"
-                           dataKey={theme}
-                           stroke={idx === 0 ? '#00FF41' : idx === 1 ? '#3B82F6' : idx === 2 ? '#F59E0B' : '#8B5CF6'}
-                           strokeWidth={2}
-                           dot={false}
-                           activeDot={{ r: 4, stroke: '#000', strokeWidth: 1 }}
-                           isAnimationActive={false}
-                         />
-                       ))}
-                    </LineChart>
-                 </ResponsiveContainer>
+                 <Line 
+                    data={{
+                      labels: themeExposureHistory.map(d => d.time),
+                      datasets: (selectedThemes.length > 0 ? selectedThemes : [THEMES[0], THEMES[1], THEMES[2]]).map((theme, idx) => ({
+                        label: theme,
+                        data: themeExposureHistory.map(d => d[theme] as number),
+                        borderColor: idx === 0 ? '#00FF41' : idx === 1 ? '#3B82F6' : idx === 2 ? '#F59E0B' : '#8B5CF6',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        tension: 0.4
+                      }))
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      animation: false,
+                      scales: {
+                        x: {
+                          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                          ticks: {
+                            color: '#52525B',
+                            font: { size: 8, family: 'monospace' },
+                            maxTicksLimit: 5
+                          },
+                          display: themeExposureHistory.length >= 5
+                        },
+                        y: {
+                          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                          ticks: {
+                            color: '#52525B',
+                            font: { size: 8, family: 'monospace' }
+                          }
+                        }
+                      },
+                      plugins: {
+                        legend: { 
+                          position: 'top',
+                          align: 'end',
+                          labels: {
+                            color: '#52525B',
+                            font: { size: 8, family: 'monospace' },
+                            usePointStyle: true,
+                            boxWidth: 6
+                          }
+                        },
+                        tooltip: {
+                          backgroundColor: '#0D0D0F',
+                          titleColor: '#00FF41',
+                          bodyColor: '#E4E4E7',
+                          borderColor: '#1F1F23',
+                          borderWidth: 1,
+                          titleFont: { family: 'monospace', size: 10 },
+                          bodyFont: { family: 'monospace', size: 10 },
+                        }
+                      }
+                    }}
+                 />
                  {themeExposureHistory.length === 0 && (
                    <div className="absolute inset-0 flex items-center justify-center bg-[#0D0D0F]/80">
                       <p className="text-[10px] font-mono text-[#52525B] animate-pulse">WAITING_FOR_MARKET_TICK...</p>
@@ -1072,6 +1147,13 @@ export default function UniverseExplorer() {
         </div>
 
       </div>
+
+      <SmartUniverseAssistant 
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        onApplyFilters={handleApplySmartFilters}
+        results={securities}
+      />
     </div>
   );
 }

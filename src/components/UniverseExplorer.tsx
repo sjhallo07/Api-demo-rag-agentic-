@@ -53,7 +53,7 @@ ChartJS.register(
   ChartLegend,
   Filler
 );
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Security, UniverseQueryResponse } from '../types';
 import { addAssetToPortfolio } from '../services/portfolioService';
@@ -1076,7 +1076,8 @@ export default function UniverseExplorer() {
                       const isThemeHighlighted = security.theme === hoveredTheme || security.theme === activeThemeFilter;
                       
                       return (
-                        <tr 
+                        <motion.tr 
+                          layout
                           key={security.id} 
                           onClick={() => setSelectedSecurity(security)}
                           className={cn(
@@ -1160,7 +1161,7 @@ export default function UniverseExplorer() {
                                  </div>
                              </td>
                            )}
-                        </tr>
+                         </motion.tr>
                       );
                     })}
                   </tbody>

@@ -97,14 +97,14 @@ TONE: Professional, data-centric, analytical, and concise.`;
 /**
  * Chat with Gemini with specific temperature settings for extraction and conversation.
  */
-export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' = 'chat', documents?: string[], universeContext: any = []) {
+export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' | 'code' = 'chat', documents?: string[], universeContext: any = []) {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY not found in environment");
   }
 
   const model = "gemini-3-flash-preview";
   // As requested: Temp 0 for extraction, Temp 0.4 for grounded humanized response
-  const temperature = type === 'extract' ? 0 : 0.4;
+  const temperature = type === 'extract' ? 0 : type === 'code' ? 0.2 : 0.4;
   
   const contents: any[] = [];
   
@@ -140,8 +140,10 @@ export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' = 
     finalContents = { parts: [{ text: prompt }] };
   }
 
-  const systemInstructions = type === 'extract' 
-    ? `You are a financial universe construction expert. 
+  let systemInstructions = AGENT_SYSTEM_INSTRUCTION;
+
+  if (type === 'extract') {
+    systemInstructions = `You are a financial universe construction expert. 
     Convert user requests into a JSON filter object.
     Supported identifiers for 'sector': ${UNIVERSE_METADATA.SECTORS.join(', ')}
     Supported identifiers for 'themes': ${UNIVERSE_METADATA.THEMES.join(', ')}
@@ -156,8 +158,15 @@ export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' = 
     - explanation: string (short detail on what you parsed)
     - suggestedSlices: string[] (2-3 short strings of follow-up queries or focus areas like 'Focus on AA+ ESG' or 'Filter by Market Cap > 100B')
 
-    Respond ONLY with raw JSON.`
-    : AGENT_SYSTEM_INSTRUCTION;
+    Respond ONLY with raw JSON.`;
+  } else if (type === 'code') {
+    systemInstructions = `You are an expert AI software engineer specializing in Pinecone vector database integrations and AI workflows. 
+    Generate efficient, production-ready TypeScript code using the official Pinecone SDK.
+    Follow Type Safety, clean programming patterns, and provide detailed code comments.
+    Always prioritize error handling as requested in the app environment (use try/catch blocks).
+    
+    If the code interacts with Pinecone, use the official '@pinecone-database/pinecone' SDK patterns.`;
+  }
 
   try {
     const response = await ai.models.generateContent({

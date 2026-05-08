@@ -89,6 +89,7 @@ const MODULES = [
 function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void }) {
   const [activeModule, setActiveModule] = useState<ModuleId>('universe');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
 
@@ -391,7 +392,7 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
 
         {/* Mobile Navbar (FontAwesome) */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0D0D0F] border-t border-[#1F1F23] flex items-center justify-around px-4 z-[60] backdrop-blur-md bg-opacity-90">
-          {MODULES.slice(0, 5).map((module) => (
+          {MODULES.slice(0, 4).map((module) => (
             <button
               key={module.id}
               onClick={() => setActiveModule(module.id)}
@@ -414,13 +415,47 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
             </button>
           ))}
           <button
-             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+             onClick={() => setIsMobileMenuOpen(true)}
              className="flex flex-col items-center gap-1 text-[#52525B]"
           >
              <FontAwesomeIcon icon={faBars} className="text-lg" />
              <span className="text-[8px] font-mono">MENU</span>
           </button>
         </div>
+
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              className="fixed inset-0 z-[65] bg-[#0A0A0B] p-6 flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <span className="text-xl font-mono font-bold">ALL_COMPONENTS</span>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2">
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {MODULES.map((module) => (
+                   <button
+                     key={module.id}
+                     onClick={() => {
+                       setActiveModule(module.id);
+                       setIsMobileMenuOpen(false);
+                     }}
+                     className="bg-[#16161A] border border-[#1F1F23] p-4 rounded-lg flex flex-col items-center gap-2 text-center hover:border-[#00FF41]/30 transition-all"
+                   >
+                     <module.icon className="text-[#00FF41]" size={24} />
+                     <span className="text-xs font-mono">{module.name}</span>
+                   </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

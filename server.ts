@@ -72,17 +72,28 @@ async function startServer() {
     });
   });
 
-  // Reference Data API
-  app.get("/api/reference/:id", (req, res) => {
-    const { id } = req.params;
-    res.json({
-      status: "success",
-      identifiers: {
-        ticker: id,
-        isin: `US${Math.random().toString().slice(2, 12)}`,
-        cusip: Math.random().toString().slice(2, 11),
-        sedol: Math.random().toString(36).slice(2, 9).toUpperCase()
+  // Bash Execution API (Security Sandbox: Whitelist Only)
+  app.post("/api/run-bash", (req, res) => {
+    const { command } = req.body;
+    
+    // Whitelist for security
+    const allowedCommands: { [key: string]: string } = {
+      "whoami": "whoami",
+      "ls": "ls -la",
+      "date": "date",
+      "echo": "echo 'Hello from BITA Sandbox'"
+    };
+    
+    if (!allowedCommands[command]) {
+      return res.status(403).json({ status: "error", message: "Command not authorized" });
+    }
+    
+    const { exec } = require('child_process');
+    exec(allowedCommands[command], (error: any, stdout: any, stderr: any) => {
+      if (error) {
+        return res.status(500).json({ status: "error", message: error.message });
       }
+      res.json({ status: "success", output: stdout || stderr });
     });
   });
 

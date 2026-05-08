@@ -279,15 +279,15 @@ const AuthModule: React.FC<AuthModuleProps> = ({ onSuccess }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <button 
-              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-[#16161A] border border-[#1F1F23] rounded-lg text-white text-xs font-mono hover:border-[#52525B] transition-all"
-              onClick={() => console.log(`FUTURE_IMPLEMENTATION: ${ENDPOINTS.AUTH.GOOGLE_AUTH}`)}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-[#16161A] border border-[#1F1F23] rounded-lg text-white text-xs font-mono hover:border-[#00FF41] transition-all"
+              onClick={() => alert('Future Implementation: Google OAuth requires backend integration.')}
             >
               <Chrome size={14} className="text-[#E4E4E7]" />
               GOOGLE
             </button>
             <button 
-              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-[#16161A] border border-[#1F1F23] rounded-lg text-white text-xs font-mono hover:border-[#52525B] transition-all"
-              onClick={() => console.log(`FUTURE_IMPLEMENTATION: ${ENDPOINTS.AUTH.GITHUB_AUTH}`)}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-[#16161A] border border-[#1F1F23] rounded-lg text-white text-xs font-mono hover:border-[#00FF41] transition-all"
+              onClick={() => alert('Future Implementation: GitHub OAuth requires backend integration.')}
             >
               <Github size={14} className="text-[#E4E4E7]" />
               GITHUB

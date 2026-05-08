@@ -9,10 +9,14 @@ import {
   Command,
   ArrowRight,
   Loader2,
-  Filter
+  Filter,
+  Code
 } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTerminal } from '@fortawesome/free-solid-svg-icons';
 import { cn } from '../lib/utils';
 import { chatWithGemini } from '../lib/gemini';
+import PineconeCodeModal from './PineconeCodeModal';
 
 interface SmartUniverseAssistantProps {
   onApplyFilters: (filters: any) => void;
@@ -24,6 +28,7 @@ interface SmartUniverseAssistantProps {
 export default function SmartUniverseAssistant({ onApplyFilters, isOpen, onClose, results = [] }: SmartUniverseAssistantProps) {
   const [query, setQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const [history, setHistory] = useState<{role: 'user' | 'agent', content: string, parsed?: any}[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +40,31 @@ export default function SmartUniverseAssistant({ onApplyFilters, isOpen, onClose
 
   const handleSend = async () => {
     if (!query.trim() || isProcessing) return;
+
+    // Bash execution logic
+    if (query.startsWith(">run ")) {
+      const command = query.slice(5).trim();
+      setHistory(prev => [...prev, { role: 'user', content: `>run ${command}` }]);
+      setQuery('');
+      setIsProcessing(true);
+      try {
+        const res = await fetch('/api/run-bash', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command })
+        });
+        const data = await res.json();
+        setHistory(prev => [...prev, {
+          role: 'agent',
+          content: data.status === 'success' ? data.output : `ERROR: ${data.message}`
+        }]);
+      } catch (e) {
+        setHistory(prev => [...prev, { role: 'agent', content: "SYSTEM_ERROR: Bash execution failed." }]);
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
 
     const userMsg = query;
     setQuery('');
@@ -77,6 +107,7 @@ export default function SmartUniverseAssistant({ onApplyFilters, isOpen, onClose
     <AnimatePresence>
       {isOpen && (
         <>
+          <PineconeCodeModal isOpen={isCodeModalOpen} onClose={() => setIsCodeModalOpen(false)} />
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -101,9 +132,14 @@ export default function SmartUniverseAssistant({ onApplyFilters, isOpen, onClose
                     <p className="text-[8px] text-[#52525B] font-mono">v4.1.0-STABLE [NEURAL_LLM]</p>
                   </div>
                </div>
-               <button onClick={onClose} className="p-1 hover:bg-white/5 rounded transition-colors text-[#52525B] hover:text-white">
-                 <X size={16} />
-               </button>
+               <div className="flex items-center gap-2">
+                 <button onClick={() => setIsCodeModalOpen(true)} className="p-1 hover:bg-white/5 rounded transition-colors text-[#52525B] hover:text-[#00FF41]">
+                   <Code size={16} />
+                 </button>
+                 <button onClick={onClose} className="p-1 hover:bg-white/5 rounded transition-colors text-[#52525B] hover:text-white">
+                   <X size={16} />
+                 </button>
+               </div>
             </div>
 
             {/* Chat Body */}

@@ -1,7 +1,7 @@
 # BITA Intelligence Terminal 
 
-## 🚀 Project Phase: Internal Alpha [v0.8]
-Currently in functional prototype stage focusing on core orchestration and factor-based retrieval.
+## 🚀 Project Status: Internal Alpha [v0.9]
+The terminal is now equipped with advanced analytics, improved RAG research capabilities, and customizable intelligence views for professional-grade quantitative finance.
 
 ## 🏗️ Technical Architecture
 The BITA architecture follows a **RAG-Agentic** pattern where a central Orchestrator manages state and tool usage to bridge qualitative research with quantitative factor analysis.
@@ -19,65 +19,37 @@ graph TD
     KB -->|Qualitative Context| Agent
 ```
 
-## 🧠 RAG Agentic AI Implementation
-Our implementation utilizes a multi-stage pipeline to ensure grounding in actual financial data:
-
-1. **Extraction**: Mapping user intent to quantitative filter parameters (Sectors, Geography, ESG).
-2. **Retrieval**: Fetching relevant qualitative chunks from the `knowledgeService` (Semantic Context).
-3. **Grounding**: Injecting real-time instrument data from the `universeService` into the LLM context.
-4. **Synthesis**: Generating professional-grade reports with specific ticker mappings.
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant A as BitaAgent
-    participant KB as KnowledgeBase (RAG)
-    participant Uni as Universe (Quant)
-    participant G as Gemini API
-
-    U->>A: Natural Language Query
-    A->>KB: Retrieve Top-K Context (Chunks)
-    A->>Uni: Filter Instruments (Factors)
-    A->>G: Augmented Prompt (Context + Universe + Query)
-    G-->>A: Generated Insight + Ticker Mapping
-    A-->>U: Synthesized Response
-```
-
-## 📋 Core Modules
+## 🧠 Features & Modules
 
 ### 1. Universe Explorer
 The central hub for multi-factor investment universe construction.
 - **Factor Filtering**: Filter securities by Sector, Theme, and quantitative factors.
-- **Theme Highlighting**: Visual mapping of megatrends (e.g., AI/GPU, Lithium Transition) to specific ticker exposures.
-- **Dynamic Configuration**: 
-  - **Column Management**: Toggle visibility of key metrics like P/E Ratio, Market Cap, and ESG scores.
-  - **Real-time Live Mode**: Simulates live market data updates for score tracking.
+- **Theme Highlighting**: Visual mapping of megatrends to specific ticker exposures.
+- **Saved Views**: Create, name, and load custom filter configurations for rapid research.
+- **Dynamic Configuration**: Column management and real-time visualization toggles.
 
-### 2. Chat Terminal (RAG-Agentic)
+### 2. Analytics Dashboard
+Advanced visualization for portfolio and market analytics.
+- **Performance Attribution**: Interactive performance tracking with selectable timeframes (7D, 30D, 90D).
+- **Market Breakdown**: Visualizations for Geographic and Sector exposure.
+- **ESG & Controversy Metrics**: Aggregated ESG scoring, carbon intensity, and controversy levels.
+
+### 3. Chat Terminal (RAG-Agentic)
 A semantic research engine powered by Google Gemini.
-- **Orchestrator**: Manages conversational state and intent detection.
-- **Semantic Search**: Maps natural language queries to financial factors and megatrends.
-- **Investment Insights**: Generates qualitative analysis based on point-in-time financial identifiers.
+- **Enhanced RAG Process**: Upload documents to extract features, embed chunks, and compute semantic similarity. Prioritizes context chunks with high (>0.6) similarity scores for precise AI grounding.
+- **Intent Detection**: Orchestrates intent and financial data synthesis.
 
-### 3. Portfolio Dashboard
-Real-time tracking of simulated investment positions.
-- **Position Tracking**: Monitor gains/losses and capital allocation.
-- **Risk Metrics**: Simplified view of portfolio health and exposure.
+### 4. System Integrity & Security
+- **API Key Hardening**: Environment variable validation ensures `GEMINI_API_KEY` is correctly configured and present before any service initialization.
 
-### 4. Strategy Builder
-Construct and backtest investment strategies based on thematic filters and factor scoring.
-- **Universe Drafting**: Assemble custom universes for targeted thematic exposure.
-- **Logic Mapping**: Define how factors weight into the final investment signal.
+---
 
-## 🛠️ Next Scaffolding Suggestions [Beta v1.0]
-
-- **Database Integration**: Migrate Knowledge Base and Portfolio from `localStorage` to **Firebase Firestore** for persistent multi-user support.
-- **Real-time News Vectorization**: Implement an automated pipeline to vectorize financial news into the RAG engine via Gemini Embeddings.
-- **Advanced Prompt Engineering**: Implement specialized system instructions for different "Analyst Personas" (e.g., Value Investing vs. Momentum).
-- **Execution Workflow**: Add "Click-to-Trade" modal to simulate order execution with slippage and commission calculations.
-
-## 📱 Mobile Experience
-The terminal includes a dedicated mobile-responsive interface with a bottom navigation bar for quick access to core modules.
+## 🛠️ Roadmap Suggestions [v1.0]
+- **Firebase Integration**: Migrate to Firebase Firestore for multi-user state persistence.
+- **Market News Pipeline**: Automate financial news vectorization via Gemini Embeddings.
+- **Analyst Personas**: Specialized system instructions for diverse investment styles (Value, Growth, Momentum).
+- **Order Execution**: Simulate "Click-to-Trade" workflows with realistic slippage.
+- **Mobile Experience**: Dedicated mobile-responsive navigation and interface.
 
 ---
 *BITA Command Agent | Built for Precision Quantitative Finance.*

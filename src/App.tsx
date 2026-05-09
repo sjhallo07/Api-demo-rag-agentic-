@@ -32,7 +32,7 @@ import { ModuleId, UserProfile } from './types';
 import ChatTerminal from './components/ChatTerminal';
 import UniverseExplorer from './components/UniverseExplorer';
 import StrategyBuilder from './components/StrategyBuilder';
-import PortfolioDashboard from './components/PortfolioDashboard';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
 import AdminIntelligence from './components/AdminIntelligence';
 import MobilePreview from './components/MobilePreview';
 import ApiDocs from './components/ApiDocs';
@@ -288,7 +288,7 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
                   transition={{ duration: 0.3 }}
                   className="p-8 h-full"
                 >
-                  <PortfolioDashboard />
+                  <AnalyticsDashboard />
                 </motion.div>
               ) : activeModule === 'strategy' ? (
                 <motion.div

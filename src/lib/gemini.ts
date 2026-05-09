@@ -98,8 +98,8 @@ TONE: Professional, data-centric, analytical, and concise.`;
  * Chat with Gemini with specific temperature settings for extraction and conversation.
  */
 export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' | 'code' = 'chat', documents?: string[], universeContext: any = []) {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY not found in environment");
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "") {
+    throw new Error("GEMINI_API_KEY is missing or empty in the environment variables.");
   }
 
   const model = "gemini-3-flash-preview";

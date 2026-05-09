@@ -5,6 +5,9 @@ export interface Security {
   geography: string;
   score: number;
   esg: string;
+  esgScore: number;
+  carbonIntensity: number;
+  controversyLevel: 'low' | 'medium' | 'high';
   momentum: number;
   pe: number;
   marketCap: string;
@@ -12,14 +15,14 @@ export interface Security {
 }
 
 export const INSTRUMENTS: Security[] = [
-  { id: "AAPL", name: "Apple Inc.", sector: "Technology", geography: "North America", score: 0.98, esg: "AA", momentum: 0.75, pe: 28.5, marketCap: "2.8T", theme: "Consumer Tech" },
-  { id: "SAP", name: "SAP SE", sector: "Technology", geography: "Europe", score: 0.92, esg: "AAA", momentum: 0.65, pe: 22.1, marketCap: "180B", theme: "Enterprise Software" },
-  { id: "ASML", name: "ASML Holding", sector: "Semiconductors", geography: "Europe", score: 0.95, esg: "AA", momentum: 0.88, pe: 35.2, marketCap: "350B", theme: "Lithography" },
-  { id: "NVDA", name: "NVIDIA Corp.", sector: "Semiconductors", geography: "North America", score: 0.94, esg: "A", momentum: 0.98, pe: 65.4, marketCap: "2.2T", theme: "AI/GPU" },
-  { id: "MC.PA", name: "LVMH", sector: "Consumer", geography: "Europe", score: 0.88, esg: "A", momentum: 0.55, pe: 24.8, marketCap: "400B", theme: "Luxury" },
-  { id: "VOW3", name: "Volkswagen", sector: "Automotive", geography: "Europe", score: 0.72, esg: "B", momentum: 0.42, pe: 4.5, marketCap: "70B", theme: "EV Transition" },
-  { id: "HSBA.L", name: "HSBC Holdings", sector: "Finance", geography: "Europe", score: 0.65, esg: "BBB", momentum: 0.48, pe: 6.8, marketCap: "150B", theme: "Global Banking" },
-  { id: "OR.PA", name: "L'Oreal", sector: "Consumer", geography: "Europe", score: 0.91, esg: "AA", momentum: 0.61, pe: 32.5, marketCap: "230B", theme: "Personal Care" },
+  { id: "AAPL", name: "Apple Inc.", sector: "Technology", geography: "North America", score: 0.98, esg: "AA", esgScore: 82, carbonIntensity: 120, controversyLevel: 'low', momentum: 0.75, pe: 28.5, marketCap: "2.8T", theme: "Consumer Tech" },
+  { id: "SAP", name: "SAP SE", sector: "Technology", geography: "Europe", score: 0.92, esg: "AAA", esgScore: 88, carbonIntensity: 90, controversyLevel: 'low', momentum: 0.65, pe: 22.1, marketCap: "180B", theme: "Enterprise Software" },
+  { id: "ASML", name: "ASML Holding", sector: "Semiconductors", geography: "Europe", score: 0.95, esg: "AA", esgScore: 78, carbonIntensity: 150, controversyLevel: 'medium', momentum: 0.88, pe: 35.2, marketCap: "350B", theme: "Lithography" },
+  { id: "NVDA", name: "NVIDIA Corp.", sector: "Semiconductors", geography: "North America", score: 0.94, esg: "A", esgScore: 75, carbonIntensity: 180, controversyLevel: 'low', momentum: 0.98, pe: 65.4, marketCap: "2.2T", theme: "AI/GPU" },
+  { id: "MC.PA", name: "LVMH", sector: "Consumer", geography: "Europe", score: 0.88, esg: "A", esgScore: 72, carbonIntensity: 210, controversyLevel: 'medium', momentum: 0.55, pe: 24.8, marketCap: "400B", theme: "Luxury" },
+  { id: "VOW3", name: "Volkswagen", sector: "Automotive", geography: "Europe", score: 0.72, esg: "B", esgScore: 55, carbonIntensity: 450, controversyLevel: 'high', momentum: 0.42, pe: 4.5, marketCap: "70B", theme: "EV Transition" },
+  { id: "HSBA.L", name: "HSBC Holdings", sector: "Finance", geography: "Europe", score: 0.65, esg: "BBB", esgScore: 65, carbonIntensity: 300, controversyLevel: 'medium', momentum: 0.48, pe: 6.8, marketCap: "150B", theme: "Global Banking" },
+  { id: "OR.PA", name: "L'Oreal", sector: "Consumer", geography: "Europe", score: 0.91, esg: "AA", esgScore: 80, carbonIntensity: 110, controversyLevel: 'low', momentum: 0.61, pe: 32.5, marketCap: "230B", theme: "Personal Care" },
 ];
 
 export interface PortfolioPosition extends Security {

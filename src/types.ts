@@ -6,7 +6,10 @@ export interface Security {
   sector: string;
   geography: string;
   score: number;
-  esg: string;
+  esg: string; // "AAA", "AA", "A", etc.
+  esgScore: number; // 0-100
+  carbonIntensity: number; // Environmental metric
+  controversyLevel: 'low' | 'medium' | 'high'; // Controversy metric
   momentum: number;
   pe: number;
   marketCap: string;
@@ -64,4 +67,15 @@ export interface UniverseQueryResponse {
   status: string;
   results: Security[];
   query?: string;
+}
+
+export interface SavedView {
+  id: string;
+  name: string;
+  query: string;
+  filters: {
+    sector: string;
+    themes: string[];
+    minEsg: number;
+  };
 }

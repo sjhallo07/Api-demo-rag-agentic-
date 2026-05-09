@@ -55,7 +55,7 @@ ChartJS.register(
 );
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
-import { Security, UniverseQueryResponse } from '../types';
+import { Security, UniverseQueryResponse, SavedView } from '../types';
 import { addAssetToPortfolio } from '../services/portfolioService';
 import { UNIVERSE_METADATA } from '../constants';
 import SmartUniverseAssistant from './SmartUniverseAssistant';
@@ -79,9 +79,18 @@ export default function UniverseExplorer() {
   const [activeThemeFilter, setActiveThemeFilter] = useState<string | null>(null);
   const [hoveredTheme, setHoveredTheme] = useState<string | null>(null);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const [showViewsDropdown, setShowViewsDropdown] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['ticker', 'score', 'esg']);
   const [themeExposureHistory, setThemeExposureHistory] = useState<any[]>([]);
   const [batchQueue, setBatchQueue] = useState<string[]>([]);
+  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+
+  useEffect(() => {
+    const storedViews = localStorage.getItem('BITA_SAVED_VIEWS');
+    if (storedViews) {
+      setSavedViews(JSON.parse(storedViews));
+    }
+  }, []);
 
   const COLUMNS = [
     { id: 'ticker', label: 'TICKER' },
@@ -220,6 +229,28 @@ export default function UniverseExplorer() {
         themes: filters.themes || selectedThemes,
         minEsg: filters.minEsg || minEsg
     });
+  };
+
+  const saveView = () => {
+    const name = prompt("NAME_FOR_VIEW:");
+    if (!name) return;
+    const newView: SavedView = {
+      id: Date.now().toString(),
+      name,
+      query,
+      filters: { sector: selectedSector, themes: selectedThemes, minEsg }
+    };
+    const updatedViews = [...savedViews, newView];
+    setSavedViews(updatedViews);
+    localStorage.setItem('BITA_SAVED_VIEWS', JSON.stringify(updatedViews));
+  };
+
+  const loadView = (view: SavedView) => {
+    setQuery(view.query);
+    setSelectedSector(view.filters.sector);
+    setSelectedThemes(view.filters.themes);
+    setMinEsg(view.filters.minEsg);
+    performSearch(view.query, view.filters);
   };
 
   const exportToCSV = () => {
@@ -695,7 +726,53 @@ export default function UniverseExplorer() {
                 )}
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">                
+                <div className="relative">
+                  <button 
+                    onClick={saveView}
+                    className="p-2 bg-[#1F1F23] text-white rounded-md hover:bg-[#27272A] transition-all"
+                    title="SAVE_CURRENT_VIEW"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+                
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowViewsDropdown(!showViewsDropdown)}
+                    className={cn(
+                      "p-2 bg-[#0D0D0F] border rounded-md transition-all",
+                      showViewsDropdown ? "border-[#00FF41] text-[#00FF41]" : "border-[#1F1F23] text-[#71717A] hover:text-white"
+                    )}
+                    title="SAVED_VIEWS"
+                  >
+                    <Clock size={16} />
+                  </button>
+                  {showViewsDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowViewsDropdown(false)} />
+                      <div className="absolute top-full mt-2 right-0 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="px-3 py-1.5 text-[8px] font-mono text-[#52525B] border-b border-[#1F1F23] mb-1">
+                          SAVED_VIEWS
+                        </div>
+                        {savedViews.length === 0 && <div className="px-3 py-2 text-[10px] font-mono text-[#71717A]">NO_VIEWS_SAVED</div>}
+                        {savedViews.map(view => (
+                           <button
+                             key={view.id}
+                             onClick={() => {
+                               loadView(view);
+                               setShowViewsDropdown(false);
+                             }}
+                             className="w-full text-left px-3 py-2 rounded text-[10px] font-mono text-[#71717A] hover:bg-[#16161A] hover:text-[#00FF41] flex items-center justify-between transition-colors"
+                           >
+                             {view.name.toUpperCase()}
+                           </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <div className="relative">
                   <button 
                     onClick={() => setShowExportDropdown(!showExportDropdown)}

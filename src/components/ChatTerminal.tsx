@@ -7,6 +7,7 @@ import { cn } from '../lib/utils';
 import { chatWithGemini, getEmbedding, cosineSimilarity } from '../lib/gemini';
 import { ChatMessage, AttachmentMetadata } from '../types';
 import { getKnowledgeBase } from '../services/knowledgeService';
+import { searchUniverse } from '../services/universeService';
 import { documentProcessor } from '../services/documentService';
 
 import { Line, Bar } from 'react-chartjs-2';
@@ -143,7 +144,24 @@ export default function ChatTerminal() {
       setTimeout(() => {
         let responseContent = '';
         if (command === '/universe') {
-          responseContent = `> Executing 'universe' with args: [${args}]\n\nProcessing... filtering instruments... \n\nFound 15 matching securities. Saved to working memory.`;
+          const parts = args.split(' ');
+          let query = '';
+          const filters: any = {};
+          
+          parts.forEach(part => {
+             if (part.startsWith('sector:')) filters.sector = part.split(':')[1];
+             else if (part.startsWith('esg:')) filters.minEsg = part.split(':')[1]; // Simple mapping
+             else if (part.startsWith('theme:')) filters.themes = [part.split(':')[1]];
+             else query += part + ' ';
+          });
+          
+          const esgMap: Record<string, number> = { 'AAA': 90, 'AA': 80, 'A': 70, 'BBB': 60, 'BB': 50, 'B': 40 };
+          if (filters.minEsg && esgMap[filters.minEsg]) filters.minEsg = esgMap[filters.minEsg];
+
+          const results = searchUniverse(query.trim(), filters);
+          
+          responseContent = `> Executing 'universe'...\n\nFound ${results.length} results:\n\n${results.map(r => `- [${r.id}] ${r.name} (${r.sector}) - Score: ${r.score.toFixed(2)}`).join('\n')}`;
+          
           window.dispatchEvent(new CustomEvent('bit_query_universe', { detail: { query: args } }));
         } else if (command === '/backtest') {
           responseContent = `> Executing 'backtest' with args: [${args}]\n\nSimulating 3-year performance...\n\nResult: 68% Return, 12% Volatility. See Strategy Builder.`;
@@ -282,7 +300,7 @@ esac
               return { content: `[DOC_CHUNK ${chunk.id}]: ${chunk.content}`, score };
            }));
            
-           const relevantChunks = chunksWithScore.filter(c => c.score > 0.5).sort((a,b) => b.score - a.score).slice(0, 3).map(c => c.content);
+           const relevantChunks = chunksWithScore.filter(c => c.score > 0.6).sort((a,b) => b.score - a.score).slice(0, 3).map(c => c.content);
            documentChunks = [...documentChunks, ...relevantChunks];
         }
         if (documentChunks.length > 0) {

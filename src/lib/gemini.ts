@@ -106,7 +106,7 @@ export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' | 
     throw new Error(msg);
   }
 
-  const model = "gemini-3-flash-preview";
+  const model = "gemini-flash-latest";
   // As requested: Temp 0 for extraction, Temp 0.4 for grounded humanized response
   const temperature = type === 'extract' ? 0 : type === 'code' ? 0.2 : 0.4;
   
@@ -182,11 +182,19 @@ export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' | 
       }
     });
 
+    if (!response.text) {
+      console.warn("Frontend Gemini Call: Empty text response.");
+    }
+
     return response.text || (type === 'extract' ? "{}" : "No response generated.");
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    if (error.message?.includes("API key not valid")) {
+    console.error("Gemini API Error (Frontend):", error);
+    const msg = error.message || "";
+    if (msg.includes("API key not valid")) {
        return "Terminal Auth Error: Your BITA Command Key is invalid or has expired.";
+    }
+    if (msg.includes("User location is not supported")) {
+      return "Geographic Restriction: Gemini is not supported in your region.";
     }
     return type === 'extract' ? "{}" : `The system encountered an error: ${error.message || "Unknown error"}`;
   }

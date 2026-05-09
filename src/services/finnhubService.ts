@@ -3,7 +3,7 @@
  * Handles REST and WebSocket communication with Finnhub.io
  */
 
-const FINNHUB_KEY = "d7uadupr01qnv95msgrgd7uadupr01qnv95msgs0";
+const FINNHUB_KEY = process.env.FINNHUB_API_KEY?.replace(/^["'](.+)["']$/, '$1') || "d7uadupr01qnv95msgrgd7uadupr01qnv95msgs0";
 const REST_URL = "https://finnhub.io/api/v1";
 const WS_URL = "wss://ws.finnhub.io";
 

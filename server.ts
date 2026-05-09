@@ -128,7 +128,18 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
+    const key = process.env.GEMINI_API_KEY || "";
+    const keyStatus = key ? "FOUND (First 4: " + key.trim().substring(0, 4) + "...)" : "MISSING";
+    
+    if (!key) {
+      const fs = require('fs');
+      const envPath = path.join(process.cwd(), '.env');
+      const envExists = fs.existsSync(envPath);
+      console.warn(`BITA Warning: GEMINI_API_KEY is missing from environment. .env file exists: ${envExists}`);
+    }
+
     console.log(`BITA Command Server running on http://localhost:${PORT}`);
+    console.log(`GEMINI_API_KEY Status: ${keyStatus}`);
   });
 }
 

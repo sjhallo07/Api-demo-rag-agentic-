@@ -1,5 +1,5 @@
 
-import { Security, INSTRUMENTS } from './universeService';
+import { Security, INSTRUMENTS } from './universeService.ts';
 
 export interface PortfolioPosition extends Security {
   weight: number;

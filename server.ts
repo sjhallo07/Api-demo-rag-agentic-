@@ -2,8 +2,8 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { bitaAgent } from "./src/services/agentService";
-import { searchUniverse } from "./src/services/universeService";
+import { bitaAgent } from "./src/services/agentService.ts";
+import { searchUniverse } from "./src/services/universeService.ts";
 
 async function startServer() {
   const app = express();

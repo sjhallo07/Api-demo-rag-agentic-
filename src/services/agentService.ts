@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { searchUniverse } from "./universeService";
+import { searchUniverse } from "./universeService.ts";
 
 export interface AgentResponse {
   content: string;
@@ -32,7 +32,7 @@ TONE: Professional, data-centric, analytical, and concise.`;
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.trim() === "") {
       return {
-        content: "ERROR: GEMINI_API_KEY is missing or invalid. Please configure your API key in the 'Secrets' menu of the AI Studio settings to enable the BITA Orchestrator.",
+        content: `ERROR: GEMINI_API_KEY is ${!apiKey ? 'UNDEFINED' : 'EMPTY'}. Please ensure you have added a secret named 'GEMINI_API_KEY' in the AI Studio Settings (Secrets icon on the left).`,
         data: []
       };
     }

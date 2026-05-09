@@ -27,19 +27,19 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from './lib/utils';
-import { ModuleId, UserProfile } from './types';
-import ChatTerminal from './components/ChatTerminal';
-import UniverseExplorer from './components/UniverseExplorer';
-import StrategyBuilder from './components/StrategyBuilder';
-import AnalyticsDashboard from './components/AnalyticsDashboard';
-import AdminIntelligence from './components/AdminIntelligence';
-import MobilePreview from './components/MobilePreview';
-import ApiDocs from './components/ApiDocs';
-import MarketMastery from './components/MarketMastery';
-import LandingPage from './components/LandingPage';
-import AuthModule from './components/AuthModule';
-import PaymentModule from './components/PaymentModule';
+import { cn } from './lib/utils.ts';
+import { ModuleId, UserProfile } from './types.ts';
+import ChatTerminal from './components/ChatTerminal.tsx';
+import UniverseExplorer from './components/UniverseExplorer.tsx';
+import StrategyBuilder from './components/StrategyBuilder.tsx';
+import AnalyticsDashboard from './components/AnalyticsDashboard.tsx';
+import AdminIntelligence from './components/AdminIntelligence.tsx';
+import MobilePreview from './components/MobilePreview.tsx';
+import ApiDocs from './components/ApiDocs.tsx';
+import MarketMastery from './components/MarketMastery.tsx';
+import LandingPage from './components/LandingPage.tsx';
+import AuthModule from './components/AuthModule.tsx';
+import PaymentModule from './components/PaymentModule.tsx';
 import { SESSION_KEY } from './constants';
 
 // Font Awesome Setup

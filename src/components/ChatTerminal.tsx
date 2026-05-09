@@ -3,11 +3,11 @@ import { Send, Image as ImageIcon, Loader2, Sparkles, AlertCircle, FileUp, X, Fi
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { cn } from '../lib/utils';
-import { ChatMessage, AttachmentMetadata } from '../types';
-import { getKnowledgeBase } from '../services/knowledgeService';
-import { searchUniverse } from '../services/universeService';
-import { documentProcessor } from '../services/documentService';
+import { cn } from '../lib/utils.ts';
+import { ChatMessage, AttachmentMetadata } from '../types.ts';
+import { getKnowledgeBase } from '../services/knowledgeService.ts';
+import { searchUniverse } from '../services/universeService.ts';
+import { documentProcessor } from '../services/documentService.ts';
 
 import { Line, Bar } from 'react-chartjs-2';
 import { 

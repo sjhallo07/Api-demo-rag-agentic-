@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTerminal } from '@fortawesome/free-solid-svg-icons';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/utils.ts';
 import PineconeCodeModal from './PineconeCodeModal';
 
 interface SmartUniverseAssistantProps {

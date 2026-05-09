@@ -15,10 +15,10 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
-import { Security, StrategyTemplate } from '../types';
+import { cn } from '../lib/utils.ts';
+import { Security, StrategyTemplate } from '../types.ts';
 import { Line } from 'react-chartjs-2';
-import { INSTRUMENTS } from '../services/universeService';
+import { INSTRUMENTS } from '../services/universeService.ts';
 import {
   Chart as ChartJS,
   CategoryScale,

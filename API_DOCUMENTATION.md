@@ -70,6 +70,6 @@ This document outlines the available endpoints for the BITA Financial Intelligen
 ---
 
 ## Technical Specifications
-- **Authentication**: Managed via Environment Variables (`GEMINI_API_KEY`).
+- **Authentication**: Managed via Environment Variables (`BITA_AI_API_KEY`).
 - **Environment**: Node.js (Express) + Vite (React).
 - **Styling**: Tailwind CSS + Framer Motion.

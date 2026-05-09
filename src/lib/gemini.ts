@@ -5,7 +5,7 @@ import { env, pipeline } from "@xenova/transformers";
 env.allowLocalModels = false;
 env.useBrowserCache = false; // Add this to prevent browser caching issues during dev
 
-export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+export const ai = new GoogleGenAI({ apiKey: process.env.BITA_AI_API_KEY || "" });
 
 let localPipeline: any = null;
 
@@ -98,11 +98,11 @@ TONE: Professional, data-centric, analytical, and concise.`;
  * Chat with Gemini with specific temperature settings for extraction and conversation.
  */
 export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' | 'code' = 'chat', documents?: string[], universeContext: any = []) {
-  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "") {
+  if (!process.env.BITA_AI_API_KEY || process.env.BITA_AI_API_KEY.trim() === "") {
     const isBrowser = typeof window !== 'undefined';
     const msg = isBrowser 
-      ? "GEMINI_API_KEY is missing in the browser. In full-stack mode, this request should be handled by the server." 
-      : "GEMINI_API_KEY is missing in the server environment variables.";
+      ? "BITA_AI_API_KEY is missing in the browser. In full-stack mode, this request should be handled by the server." 
+      : "BITA_AI_API_KEY is missing in the server environment variables.";
     throw new Error(msg);
   }
 

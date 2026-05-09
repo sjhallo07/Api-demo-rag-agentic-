@@ -288,7 +288,11 @@ esac
         })
       });
       
-      if (!extractionResp.ok) throw new Error("Intent extraction failed at gateway.");
+      if (!extractionResp.ok) {
+        const errorText = await extractionResp.text();
+        console.error("Intent extraction failed:", errorText);
+        throw new Error(`Intent extraction failed at gateway: ${extractionResp.status} ${errorText}`);
+      }
       const extractionData = await extractionResp.json();
       const extraction = extractionData.content;
 

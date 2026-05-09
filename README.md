@@ -40,7 +40,7 @@ A semantic research engine powered by Google Gemini.
 - **Intent Detection**: Orchestrates intent and financial data synthesis.
 
 ### 4. System Integrity & Security
-- **API Key Hardening**: Environment variable validation ensures `GEMINI_API_KEY` is correctly configured and present before any service initialization.
+- **API Key Hardening**: Environment variable validation ensures `BITA_AI_API_KEY` is correctly configured and present before any service initialization.
 
 ---
 

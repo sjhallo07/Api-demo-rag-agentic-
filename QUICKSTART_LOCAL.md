@@ -17,7 +17,7 @@ This guide helps you set up the BITA Financial Intelligence Terminal on your loc
    - Create a `.env` file in the root directory.
    - Add your Gemini API Key:
      ```env
-     GEMINI_API_KEY="your_actual_api_key_here"
+     BITA_AI_API_KEY="your_actual_api_key_here"
      ```
 4. **Start the Development Server**:
    ```bash
@@ -32,5 +32,5 @@ This guide helps you set up the BITA Financial Intelligence Terminal on your loc
 - **Dynamic Portfolio Construction**: Build and backtest strategies in real-time.
 
 ## Troubleshooting
-- **API Errors**: Ensure your `GEMINI_API_KEY` is correct. Check the terminal logs for specific backend errors.
+- **API Errors**: Ensure your `BITA_AI_API_KEY` is correct. Check the terminal logs for specific backend errors.
 - **Port Conflicts**: BITA defaults to port 3000. Ensure no other process is using it.

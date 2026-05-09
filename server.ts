@@ -9,7 +9,7 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
 
   // Search API
   app.post("/api/universe/search", (req, res) => {
@@ -97,6 +97,12 @@ async function startServer() {
     });
   });
 
+  // Test Gemini API Connectivity
+  app.get("/api/test-gemini", async (req, res) => {
+    const isConnected = await bitaAgent.testConnection();
+    res.json({ status: isConnected ? "success" : "failure", message: isConnected ? "Gemini connected" : "Gemini connection failed" });
+  });
+
   // RAG Orchestrator Endpoint
   app.post("/api/agent/chat", async (req, res) => {
     const { query, documents, extractionOnly, systemInstruction, temperature } = req.body;
@@ -128,18 +134,18 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    const key = process.env.GEMINI_API_KEY || "";
+    const key = process.env.BITA_AI_API_KEY || "";
     const keyStatus = key ? "FOUND (First 4: " + key.trim().substring(0, 4) + "...)" : "MISSING";
     
     if (!key) {
       const fs = require('fs');
       const envPath = path.join(process.cwd(), '.env');
       const envExists = fs.existsSync(envPath);
-      console.warn(`BITA Warning: GEMINI_API_KEY is missing from environment. .env file exists: ${envExists}`);
+      console.warn(`BITA Warning: BITA_AI_API_KEY is missing from environment. .env file exists: ${envExists}`);
     }
 
     console.log(`BITA Command Server running on http://localhost:${PORT}`);
-    console.log(`GEMINI_API_KEY Status: ${keyStatus}`);
+    console.log(`BITA_AI_API_KEY Status: ${keyStatus}`);
   });
 }
 

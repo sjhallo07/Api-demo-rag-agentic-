@@ -28,18 +28,41 @@ The user can also use the "Strategy Builder" module in the UI for a guided confi
 
 TONE: Professional, data-centric, analytical, and concise.`;
 
+  /**
+   * Simple connectivity test.
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      const apiKey = (process.env.BITA_AI_API_KEY || "").trim().replace(/^["'](.+)["']$/, '$1');
+      if (!apiKey || apiKey === "MY_BITA_AI_API_KEY") return false;
+      
+      const ai = new GoogleGenAI({ apiKey: apiKey });
+      await ai.models.generateContent({
+        model: "gemini-flash-latest",
+        contents: "ping",
+      });
+      return true;
+    } catch (error) {
+      console.error("BITA Orchestrator: Connection test failed.", error);
+      return false;
+    }
+  }
+
   async processRequest(query: string, documents?: string[], extractionOnly: boolean = false, customSystem?: string, customTemp?: number): Promise<AgentResponse> {
-    let apiKey = (process.env.GEMINI_API_KEY || "").trim();
+    let apiKey = (process.env.BITA_AI_API_KEY || "").trim();
     // Robust parsing for quoted strings
     apiKey = apiKey.replace(/^["'](.+)["']$/, '$1').trim();
 
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-      console.error("BITA Orchestrator: GEMINI_API_KEY is missing or empty.");
+    console.log(`BITA Orchestrator: Initializing with API_KEY_STATUS: ${apiKey ? "FOUND_AND_NOT_EMPTY" : "NOT_FOUND_OR_EMPTY"}`);
+
+    if (!apiKey || apiKey === "MY_BITA_AI_API_KEY") {
+      console.error("BITA Orchestrator: BITA_AI_API_KEY is missing or empty.");
       return {
-        content: `ERROR: GEMINI_API_KEY is missing. Please ensure you have added a secret named 'GEMINI_API_KEY' in the AI Studio Settings (Secrets icon on the left).`,
+        content: `ERROR: BITA_AI_API_KEY is missing. Please ensure you have added a secret named 'BITA_AI_API_KEY' in the AI Studio Settings (Secrets icon on the left).`,
         data: []
       };
     }
+    // ... (rest of code)
 
     // 1. Document Processing (Advanced Chunking) - skip if extractionOnly
     let docContext = "";
@@ -105,7 +128,7 @@ TONE: Professional, data-centric, analytical, and concise.`;
       
       if (errorMsg.includes("API key not valid") || errorJson.includes("API_KEY_INVALID")) {
         return {
-          content: "AUTHENTICATION_FAILED: The provided GEMINI_API_KEY is invalid. Please verify your key in the 'Secrets' panel. BITA requires a valid license key for agentic orchestration.",
+          content: "AUTHENTICATION_FAILED: The provided BITA_AI_API_KEY is invalid. Please verify your key in the 'Secrets' panel. BITA requires a valid license key for agentic orchestration.",
           data: []
         };
       }

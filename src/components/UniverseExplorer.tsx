@@ -69,6 +69,7 @@ export default function UniverseExplorer() {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [securities, setSecurities] = useState<Security[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const [selectedSecurity, setSelectedSecurity] = useState<Security | null>(null);
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
@@ -123,6 +124,7 @@ export default function UniverseExplorer() {
 
   const performSearch = async (val: string = "", filters?: any) => {
     setIsLoading(true);
+    setErrorStatus(null);
     const searchFilters = { ...filters };
     
     // Aggregate rules into filters if in builder mode
@@ -150,10 +152,18 @@ export default function UniverseExplorer() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: val, filters: searchFilters })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server returned ${response.status}: ${response.statusText}`);
+      }
+
       const data: UniverseQueryResponse = await response.json();
-      setSecurities(data.results);
-    } catch (error) {
+      setSecurities(data.results || []);
+    } catch (error: any) {
       console.error(error);
+      setErrorStatus(`DATA_FETCH_FAILURE: ${error.message}`);
+      setSecurities([]);
     } finally {
       setIsLoading(false);
     }
@@ -1136,6 +1146,24 @@ export default function UniverseExplorer() {
                </div>
            </div>
            
+           {errorStatus && (
+              <div className="p-4 bg-red-500/10 border-b border-red-500/20 flex flex-col gap-2">
+                 <div className="flex items-center gap-2 text-red-500 text-[10px] font-mono font-bold uppercase">
+                    <X size={12} />
+                    CRITICAL_DATA_FAILURE
+                 </div>
+                 <p className="text-[10px] font-mono text-red-400/80 leading-relaxed break-all">
+                    {errorStatus}
+                 </p>
+                 <button 
+                  onClick={() => performSearch(query, { sector: selectedSector, themes: selectedThemes, minEsg })}
+                  className="w-fit text-[9px] font-mono font-bold text-red-500 hover:underline flex items-center gap-1"
+                 >
+                    <RefreshCcw size={10} /> RETRY_FETCH
+                 </button>
+              </div>
+           )}
+
            {/* Desktop Table View */}
            <div className="hidden md:block flex-1 overflow-y-auto">
               <table className="w-full text-left">

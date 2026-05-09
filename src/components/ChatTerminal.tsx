@@ -4,7 +4,6 @@ import { motion, AnimatePresence, Reorder } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../lib/utils';
-import { chatWithGemini, getEmbedding, cosineSimilarity } from '../lib/gemini';
 import { ChatMessage, AttachmentMetadata } from '../types';
 import { getKnowledgeBase } from '../services/knowledgeService';
 import { searchUniverse } from '../services/universeService';
@@ -106,6 +105,7 @@ export default function ChatTerminal() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [ragThinking, setRagThinking] = useState<string[]>([]);
   const [stagedAttachments, setStagedAttachments] = useState<AttachmentMetadata[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -132,6 +132,7 @@ export default function ChatTerminal() {
     setInput('');
     setStagedAttachments([]);
     setIsLoading(true);
+    setErrorMessage(null);
     setRagThinking([]);
 
     // Check for "bash-like" CLI commands locally
@@ -143,47 +144,48 @@ export default function ChatTerminal() {
 
       setTimeout(() => {
         let responseContent = '';
-        if (command === '/universe') {
-          const parts = args.split(' ');
-          let query = '';
-          const filters: any = {};
-          
-          parts.forEach(part => {
-             if (part.startsWith('sector:')) filters.sector = part.split(':')[1];
-             else if (part.startsWith('esg:')) filters.minEsg = part.split(':')[1]; // Simple mapping
-             else if (part.startsWith('theme:')) filters.themes = [part.split(':')[1]];
-             else query += part + ' ';
-          });
-          
-          const esgMap: Record<string, number> = { 'AAA': 90, 'AA': 80, 'A': 70, 'BBB': 60, 'BB': 50, 'B': 40 };
-          if (filters.minEsg && esgMap[filters.minEsg]) filters.minEsg = esgMap[filters.minEsg];
+        try {
+          if (command === '/universe') {
+            const parts = args.split(' ');
+            let query = '';
+            const filters: any = {};
+            
+            parts.forEach(part => {
+               if (part.startsWith('sector:')) filters.sector = part.split(':')[1];
+               else if (part.startsWith('esg:')) filters.minEsg = part.split(':')[1]; // Simple mapping
+               else if (part.startsWith('theme:')) filters.themes = [part.split(':')[1]];
+               else query += part + ' ';
+            });
+            
+            const esgMap: Record<string, number> = { 'AAA': 90, 'AA': 80, 'A': 70, 'BBB': 60, 'BB': 50, 'B': 40 };
+            if (filters.minEsg && esgMap[filters.minEsg]) filters.minEsg = esgMap[filters.minEsg];
 
-          const results = searchUniverse(query.trim(), filters);
-          
-          responseContent = `> Executing 'universe'...\n\nFound ${results.length} results:\n\n${results.map(r => `- [${r.id}] ${r.name} (${r.sector}) - Score: ${r.score.toFixed(2)}`).join('\n')}`;
-          
-          window.dispatchEvent(new CustomEvent('bit_query_universe', { detail: { query: args } }));
-        } else if (command === '/backtest') {
-          responseContent = `> Executing 'backtest' with args: [${args}]\n\nSimulating 3-year performance...\n\nResult: 68% Return, 12% Volatility. See Strategy Builder.`;
-        } else if (command === '/factsheet') {
-          responseContent = `> Executing 'factsheet' with args: [${args}]\n\nGenerating PDF report...\n\nFactsheet ready for download (simulated).`;
-        } else if (command === '/export-data') {
-          responseContent = `> Executing 'export-data'...\n\nPackaging local workspace data.\n\nData exported successfully.`;
-          const data = {
-            portfolio: localStorage.getItem('bita_portfolio'),
-            strategies: localStorage.getItem('strategy_templates'),
-            history: localStorage.getItem('bita_chat_history'),
-          };
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'bita_workspace.json';
-          a.click();
-          URL.revokeObjectURL(url);
-        } else if (command === '/export-cli') {
-          responseContent = `> Executing 'export-cli'...\n\nGenerating local Bash script for PC terminal integration.\n\nScript 'bita.sh' ready for download.`;
-          const scriptContent = `#!/bin/bash
+            const results = searchUniverse(query.trim(), filters);
+            
+            responseContent = `> Executing 'universe'...\n\nFound ${results.length} results:\n\n${results.map(r => `- [${r.id}] ${r.name} (${r.sector}) - Score: ${r.score.toFixed(2)}`).join('\n')}`;
+            
+            window.dispatchEvent(new CustomEvent('bit_query_universe', { detail: { query: args } }));
+          } else if (command === '/backtest') {
+            responseContent = `> Executing 'backtest' with args: [${args}]\n\nSimulating 3-year performance...\n\nResult: 68% Return, 12% Volatility. See Strategy Builder.`;
+          } else if (command === '/factsheet') {
+            responseContent = `> Executing 'factsheet' with args: [${args}]\n\nGenerating PDF report...\n\nFactsheet ready for download (simulated).`;
+          } else if (command === '/export-data') {
+            responseContent = `> Executing 'export-data'...\n\nPackaging local workspace data.\n\nData exported successfully.`;
+            const data = {
+              portfolio: localStorage.getItem('bita_portfolio'),
+              strategies: localStorage.getItem('strategy_templates'),
+              history: localStorage.getItem('bita_chat_history'),
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bita_workspace.json';
+            a.click();
+            URL.revokeObjectURL(url);
+          } else if (command === '/export-cli') {
+            responseContent = `> Executing 'export-cli'...\n\nGenerating local Bash script for PC terminal integration.\n\nScript 'bita.sh' ready for download.`;
+            const scriptContent = `#!/bin/bash
 # BITA Command Line Interface
 # Run on your PC Terminal
 # Requires: jq, curl
@@ -211,32 +213,36 @@ case "$command" in
     ;;
 esac
 `;
-          const blob = new Blob([scriptContent], { type: 'text/x-sh' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'bita.sh';
-          a.click();
-          URL.revokeObjectURL(url);
-        } else if (command === '/help') {
-           responseContent = `Available CLI Commands:
+            const blob = new Blob([scriptContent], { type: 'text/x-sh' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bita.sh';
+            a.click();
+            URL.revokeObjectURL(url);
+          } else if (command === '/help') {
+             responseContent = `Available CLI Commands:
   /universe [options]   Filter investment universe
   /backtest [options]   Run historical simulation
   /factsheet [ticker]   Generate PDF report
   /export-data          Backup local workspace to JSON
   /export-cli           Generate bash script for PC terminal\n   /import-data          Upload workspace (via attachment)
   /help                 Show this list`;
-        } else {
-          responseContent = `> Command not found: ${command}. Type /help for available commands.`;
+          } else {
+            responseContent = `> Command not found: ${command}. Type /help for available commands.`;
+          }
+          
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: responseContent,
+            timestamp: Date.now()
+          }]);
+        } catch (err: any) {
+           setErrorMessage(`Command Error: ${err.message}`);
+        } finally {
+          setIsLoading(false);
         }
-        
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: responseContent,
-          timestamp: Date.now()
-        }]);
-        setIsLoading(false);
       }, 800);
       return;
     }
@@ -246,6 +252,7 @@ esac
       
       const workspaceAttachment = userMessage.attachments?.find(at => at.name.includes("bita_workspace.json"));
       if (workspaceAttachment) {
+        // ... (existing workspace import logic)
         logger("IMPORTING_LOCAL_WORKSPACE...");
         try {
           const jsonText = atob(workspaceAttachment.data.split(",")[1]);
@@ -269,99 +276,55 @@ esac
 
       const base64Docs = userMessage.attachments?.map(at => at.data) || [];
 
-      // Phase 1: Aggregator Agent (Planning & React)
-      logger("AGGREGATOR_AGENT: ANALYZING_QUERY_&_PLANNING...");
-      const extraction = await chatWithGemini(userMessage.content, 'extract', base64Docs);
+      // Phase 1: Context Extraction (Backend Proxy)
+      logger("ORCHESTRATOR: ANALYZING_QUERY_INTENT...");
+      const extractionResp = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query: userMessage.content, 
+          documents: base64Docs,
+          extractionOnly: true 
+        })
+      });
+      
+      if (!extractionResp.ok) throw new Error("Intent extraction failed at gateway.");
+      const extractionData = await extractionResp.json();
+      const extraction = extractionData.content;
+
       try {
         const filters = JSON.parse(extraction);
         if (filters && Object.keys(filters).length > 0) {
           window.dispatchEvent(new CustomEvent('bit_query_universe', { detail: { query: userMessage.content, filters } }));
         }
       } catch (e) {
-        console.warn("Intent extraction skipped");
+        console.warn("Intent extraction mapping skipped");
       }
 
-      // Phase 2: Agentic Dispatch (MCP Servers)
-      logger("AGENT_1 (LOCAL_DATA_MCP): QUERYING_INTERNAL_DB...");
-      const queryVector = await getEmbedding(userMessage.content);
-      const kb = getKnowledgeBase();
-      let topInsights: string[] = [];
-      let documentChunks: string[] = [];
+      // Phase 2: Full RAG Orchestration (Backend Proxy)
+      logger("AGENT_CLUSTER: EXECUTING_MULTI_STEP_RAG...");
+      const agentResp = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query: userMessage.content, 
+          documents: base64Docs 
+        })
+      });
 
-      // Process uploaded documents via LangChain semantic chunking
-      if (userMessage.attachments && userMessage.attachments.length > 0) {
-        logger("AGENT_1: PROCESSING_DOCUMENT_ATTACHMENTS_VIA_LANGCHAIN_SPLITTER...");
-        for (const attachment of userMessage.attachments) {
-           if (attachment.name.includes("workspace")) continue;
-           const chunks = await documentProcessor.processBase64Document(attachment.data, attachment.name);
-           const chunksWithScore = await Promise.all(chunks.map(async (chunk) => {
-              const chunkVector = await getEmbedding(chunk.content);
-              const score = cosineSimilarity(queryVector, chunkVector);
-              return { content: `[DOC_CHUNK ${chunk.id}]: ${chunk.content}`, score };
-           }));
-           
-           const relevantChunks = chunksWithScore.filter(c => c.score > 0.6).sort((a,b) => b.score - a.score).slice(0, 3).map(c => c.content);
-           documentChunks = [...documentChunks, ...relevantChunks];
-        }
-        if (documentChunks.length > 0) {
-           logger(`AGENT_1: FOUND ${documentChunks.length} RELEVANT_CHUNKS_IN_DOCUMENTS`);
-        }
-      }
-
-      if (queryVector.length > 0 && kb.length > 0) {
-        const insightsWithScore = await Promise.all(kb.map(async (insight) => {
-          const insightVector = await getEmbedding(`${insight.title}: ${insight.content}`);
-          const score = cosineSimilarity(queryVector, insightVector);
-          return { content: `[LOCAL_DB_${insight.id}]: ${insight.content}`, score };
-        }));
-
-        topInsights = insightsWithScore
-          .sort((a, b) => b.score - a.score)
-          .filter(i => i.score > 0.6) 
-          .slice(0, 3)
-          .map(i => i.content);
-        
-        if(topInsights.length > 0) logger(`AGENT_1: FOUND ${topInsights.length} LOCAL_DOCS`);
-      } else {
-        logger("AGENT_1: NO_LOCAL_DATA_FOUND");
-      }
-
-      logger("AGENT_2 (SEARCH_ENGINE_MCP): FETCHING_UNIVERSE_DATA...");
-      let universeContext = [];
-      try {
-        let filters = {};
-        try { filters = JSON.parse(extraction); } catch (e) {}
-        const universeResp = await fetch('/api/universe/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: userMessage.content, filters })
-        });
-        const universeData = await universeResp.json();
-        universeContext = universeData.results || [];
-        if (universeContext.length > 0) logger(`AGENT_2: FOUND ${universeContext.length} SECURITIES`);
-      } catch (e) {
-        logger("AGENT_2: SEARCH_FAILED");
-      }
-      
-      logger("AGENT_3 (CLOUD_ENGINE_MCP): FETCHING_MACRO_INDICATORS...");
-      // Simulate cloud macro data fetch
-      const cloudContext = ["US_TREASURY_10Y: 4.2%", "VIX: 14.5"];
-      logger("AGENT_3: MACRO_DATA_RETRIEVED");
-
-      // Phase 3: Aggregator Synthesis (Generative Models)
-      logger("AGGREGATOR_AGENT: SYNTHESIZING_CONTEXT_WITH_GEMINI...");
-      const allContext = [...topInsights, ...cloudContext, ...documentChunks];
-      const agentContent = await chatWithGemini(userMessage.content, 'chat', allContext.length > 0 ? allContext : base64Docs, universeContext);
+      if (!agentResp.ok) throw new Error("Agentic orchestration failed at gateway.");
+      const agentData = await agentResp.json();
       
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: agentContent,
+        content: agentData.content,
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      setErrorMessage(`Network Error: ${error.message || "Failed to communicate with BITA Orchestrator."}`);
     } finally {
       setIsLoading(false);
       setRagThinking([]);
@@ -472,6 +435,21 @@ esac
             </motion.div>
           ))}
         </AnimatePresence>
+
+        {errorMessage && (
+          <div className="mx-4 mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-md flex items-start gap-2 animate-in fade-in slide-in-from-top-2">
+            <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+               <p className="text-[10px] font-mono text-red-400 leading-tight">{errorMessage}</p>
+               <button 
+                 onClick={() => setErrorMessage(null)}
+                 className="text-[9px] font-mono text-red-500/60 hover:text-red-500 underline mt-1"
+               >
+                 DISMISS_ERROR
+               </button>
+            </div>
+          </div>
+        )}
         
         {isLoading && (
           <div className="flex flex-col gap-2 mr-auto items-start max-w-[85%]">

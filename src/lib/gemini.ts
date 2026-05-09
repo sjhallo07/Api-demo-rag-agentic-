@@ -99,7 +99,11 @@ TONE: Professional, data-centric, analytical, and concise.`;
  */
 export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' | 'code' = 'chat', documents?: string[], universeContext: any = []) {
   if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.trim() === "") {
-    throw new Error("GEMINI_API_KEY is missing or empty in the environment variables.");
+    const isBrowser = typeof window !== 'undefined';
+    const msg = isBrowser 
+      ? "GEMINI_API_KEY is missing in the browser. In full-stack mode, this request should be handled by the server." 
+      : "GEMINI_API_KEY is missing in the server environment variables.";
+    throw new Error(msg);
   }
 
   const model = "gemini-3-flash-preview";

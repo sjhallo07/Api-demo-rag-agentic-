@@ -28,11 +28,11 @@ The user can also use the "Strategy Builder" module in the UI for a guided confi
 
 TONE: Professional, data-centric, analytical, and concise.`;
 
-  async processRequest(query: string, documents?: string[], extractionOnly: boolean = false): Promise<AgentResponse> {
+  async processRequest(query: string, documents?: string[], extractionOnly: boolean = false, customSystem?: string, customTemp?: number): Promise<AgentResponse> {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.trim() === "") {
       return {
-        content: "Error: GEMINI_API_KEY is not configured in the environment.",
+        content: "ERROR: GEMINI_API_KEY is missing or invalid. Please configure your API key in the 'Secrets' menu of the AI Studio settings to enable the BITA Orchestrator.",
         data: []
       };
     }
@@ -52,13 +52,15 @@ TONE: Professional, data-centric, analytical, and concise.`;
 
     // 2. Build Prompt
     let prompt = "";
-    let systemInstruction = this.systemInstruction;
-    let temperature = 0.5;
+    let systemInstruction = customSystem || this.systemInstruction;
+    let temperature = customTemp ?? 0.5;
 
     if (extractionOnly) {
-      systemInstruction = "You are a financial entity extractor. Convert the user's natural language request into a filter JSON object. Fields: geography (string), sector (string), minEsg (number 0-100), theme (string). Respond ONLY with valid JSON.";
+      if (!customSystem) {
+        systemInstruction = "You are a financial entity extractor. Convert the user's natural language request into a filter JSON object. Fields: geography (string), sector (string), minEsg (number 0-100), theme (string). Respond ONLY with valid JSON.";
+      }
       prompt = `USER_QUERY: ${query}\n\nRespond with JSON only.`;
-      temperature = 0;
+      if (customTemp === undefined) temperature = 0;
     } else {
       const universeContext = searchUniverse(query);
       prompt = `
@@ -73,7 +75,7 @@ TONE: Professional, data-centric, analytical, and concise.`;
     try {
       const ai = new GoogleGenAI({ apiKey: apiKey });
       const response = await ai.models.generateContent({ 
-        model: "gemini-3-flash-preview", 
+        model: "gemini-2.0-flash", 
         contents: { parts: [{ text: prompt }] },
         config: {
           systemInstruction: systemInstruction,
@@ -87,10 +89,13 @@ TONE: Professional, data-centric, analytical, and concise.`;
       };
     } catch (error: any) {
       console.error("AI Agent Error (Backend):", error);
-      // Fallback for environment constraints: indicate that frontend should be used
-      if (error.message?.includes("API key not valid")) {
+      
+      const errorMsg = error.message || "";
+      const errorJson = JSON.stringify(error);
+      
+      if (errorMsg.includes("API key not valid") || errorJson.includes("API_KEY_INVALID") || errorJson.includes("API key not valid")) {
         return {
-          content: "The backend orchestration requires a verified Command Key. Falling back to local intelligence...",
+          content: "AUTHENTICATION_FAILED: The provided GEMINI_API_KEY is invalid. Please verify your key in the 'Secrets' panel. BITA requires a valid license key for agentic orchestration.",
           data: []
         };
       }

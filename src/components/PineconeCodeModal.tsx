@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Code, Loader2, Copy, Check } from 'lucide-react';
-import { chatWithGemini } from '../lib/gemini';
 import { cn } from '../lib/utils';
 
 interface Props {
@@ -19,10 +18,21 @@ export default function PineconeCodeModal({ isOpen, onClose }: Props) {
     if (!prompt.trim()) return;
     setLoading(true);
     try {
-      const response = await chatWithGemini(`Generate Pinecone code for: ${prompt}`, 'code');
-      setCode(response);
+      const agentResp = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query: `Generate Pinecone code for: ${prompt}`,
+          systemInstruction: "You are a specialized code generator for the Pinecone vector database. Provide clean, secure, and production-ready code snippets. Respond with code blocks.",
+          temperature: 0.1
+        })
+      });
+
+      if (!agentResp.ok) throw new Error("Code generation failed.");
+      const agentData = await agentResp.json();
+      setCode(agentData.content);
     } catch (error) {
-      setCode('// Error generating code. Please try again.');
+      setCode('// Error: Neural service communication failed. Technical logs indicate a gateway timeout or missing Command Key.');
     } finally {
       setLoading(false);
     }

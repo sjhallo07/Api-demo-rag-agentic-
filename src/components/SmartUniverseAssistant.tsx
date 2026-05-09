@@ -15,7 +15,6 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTerminal } from '@fortawesome/free-solid-svg-icons';
 import { cn } from '../lib/utils';
-import { chatWithGemini } from '../lib/gemini';
 import PineconeCodeModal from './PineconeCodeModal';
 
 interface SmartUniverseAssistantProps {
@@ -72,8 +71,20 @@ export default function SmartUniverseAssistant({ onApplyFilters, isOpen, onClose
     setIsProcessing(true);
 
     try {
-      // Use 'extract' type to get structured data back from Gemini
-      const response = await chatWithGemini(userMsg, 'extract');
+      // Use Backend Agent Proxy for extraction
+      const agentResp = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query: userMsg, 
+          extractionOnly: true 
+        })
+      });
+
+      if (!agentResp.ok) throw new Error("Agent failed to respond.");
+      const agentData = await agentResp.json();
+      const response = agentData.content;
+      
       let parsedResponse: any = {};
       
       try {
@@ -81,9 +92,9 @@ export default function SmartUniverseAssistant({ onApplyFilters, isOpen, onClose
         const cleanJson = response.replace(/```json|```/gi, '').trim();
         parsedResponse = JSON.parse(cleanJson);
       } catch (e) {
-        console.error("Failed to parse Gemini response as JSON", e);
+        console.error("Failed to parse agent response as JSON", e);
         // Fallback to unstructured if parsing fails
-        parsedResponse = { explanation: "I interpreted your request, but couldn't generate strict parameters. Please try again." };
+        parsedResponse = { explanation: response };
       }
 
       setHistory(prev => [...prev, { 
@@ -96,8 +107,8 @@ export default function SmartUniverseAssistant({ onApplyFilters, isOpen, onClose
         // Automatically apply filters
         onApplyFilters(parsedResponse);
       }
-    } catch (error) {
-      setHistory(prev => [...prev, { role: 'agent', content: "SYSTEM_ERROR: Neural interface timeout." }]);
+    } catch (error: any) {
+      setHistory(prev => [...prev, { role: 'agent', content: `SYSTEM_ERROR: ${error.message || "Neural interface failure."}` }]);
     } finally {
       setIsProcessing(false);
     }

@@ -99,9 +99,9 @@ async function startServer() {
 
   // RAG Orchestrator Endpoint
   app.post("/api/agent/chat", async (req, res) => {
-    const { query, documents, extractionOnly } = req.body;
+    const { query, documents, extractionOnly, systemInstruction, temperature } = req.body;
     try {
-      const response = await bitaAgent.processRequest(query, documents, extractionOnly);
+      const response = await bitaAgent.processRequest(query, documents, extractionOnly, systemInstruction, temperature);
       res.json(response);
     } catch (error) {
       console.error("Agent Error:", error);

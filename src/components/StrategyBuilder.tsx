@@ -18,8 +18,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { Security, StrategyTemplate } from '../types';
 import { Line } from 'react-chartjs-2';
-import { ai } from '../lib/gemini';
-import { Type } from '@google/genai';
 import { INSTRUMENTS } from '../services/universeService';
 import {
   Chart as ChartJS,
@@ -129,48 +127,22 @@ export default function StrategyBuilder() {
         4. Choose professional HEX colors for the allocation (e.g., #00FF41, #3B82F6, #F43F5E, #A855F7).
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING, description: "Name of the strategy" },
-              allocation: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING },
-                    weight: { type: Type.NUMBER },
-                    color: { type: Type.STRING }
-                  },
-                  required: ["name", "weight", "color"]
-                }
-              },
-              suggestions: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    name: { type: Type.STRING },
-                    reason: { type: Type.STRING }
-                  },
-                  required: ["id", "name", "reason"]
-                }
-              }
-            },
-            required: ["name", "allocation", "suggestions"]
-          }
-        }
+      const agentResp = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query: prompt,
+          extractionOnly: true,
+          systemInstruction: "You are a financial strategy generator. Respond ONLY with valid JSON conforming to the requested schema. Do not include markdown formatting.",
+          temperature: 0.2
+        })
       });
 
-      if (!response.text) throw new Error("No response generated from AI.");
+      if (!agentResp.ok) throw new Error("Strategy orchestration failed.");
+      const agentData = await agentResp.json();
+      const responseText = agentData.content;
       
-      const strategyData = JSON.parse(response.text.trim());
+      const strategyData = JSON.parse(responseText.replace(/```json|```/gi, '').trim());
       setStrategy(strategyData);
     } catch (error: any) {
       console.error("AI Generation Error:", error);

@@ -75,7 +75,7 @@ TONE: Professional, data-centric, analytical, and concise.`;
     try {
       const ai = new GoogleGenAI({ apiKey: apiKey });
       const response = await ai.models.generateContent({ 
-        model: "gemini-2.0-flash", 
+        model: "gemini-1.5-flash", 
         contents: { parts: [{ text: prompt }] },
         config: {
           systemInstruction: systemInstruction,

@@ -11,12 +11,16 @@ import {
   Save,
   FolderOpen,
   Trash2,
-  Clock
+  Clock,
+  AlertCircle
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { Security, StrategyTemplate } from '../types';
 import { Line } from 'react-chartjs-2';
+import { ai } from '../lib/gemini';
+import { Type } from '@google/genai';
+import { INSTRUMENTS } from '../services/universeService';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -51,6 +55,7 @@ export default function StrategyBuilder() {
     risk: null
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [strategy, setStrategy] = useState<any | null>(null);
   const [templates, setTemplates] = useState<StrategyTemplate[]>([]);
   const [templateName, setTemplateName] = useState('');
@@ -95,32 +100,98 @@ export default function StrategyBuilder() {
 
   const loadTemplate = (template: StrategyTemplate) => {
     setProfile(template.profile);
-    setStrategy(null); // Clear active strategy when loading new params
+    setStrategy(null); 
+    setGenerateError(null);
   };
 
   const generateStrategy = async () => {
     if (!profile.horizon || !profile.risk || profile.sectors.length === 0) return;
     
     setIsGenerating(true);
+    setGenerateError(null);
     setBacktestData(null);
     setIsBacktesting(false);
-    // Simulate complex strategy generation with RAG Agent
-    setTimeout(() => {
+
+    try {
+      const prompt = `
+        As an expert financial advisor, generate a personalized investment strategy based on this profile:
+        - Sectors: ${profile.sectors.join(', ')}
+        - Time Horizon: ${profile.horizon === 'short' ? 'Short-term (< 1 year)' : 'Long-term (5+ years)'}
+        - Risk Appetite: ${profile.risk === 'aggressive' ? 'High Risk / Aggressive' : 'Low Risk / Passive'}
+
+        Available Instruments (Context):
+        ${JSON.stringify(INSTRUMENTS.map(i => ({ id: i.id, name: i.name, sector: i.sector, theme: i.theme, esg: i.esg })))}
+
+        Guidelines:
+        1. Suggest a strategy name.
+        2. Provide an asset allocation breakdown (must sum to 100%).
+        3. Suggest 3 specific tickers from the available instruments with clear professional reasoning.
+        4. Choose professional HEX colors for the allocation (e.g., #00FF41, #3B82F6, #F43F5E, #A855F7).
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING, description: "Name of the strategy" },
+              allocation: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING },
+                    weight: { type: Type.NUMBER },
+                    color: { type: Type.STRING }
+                  },
+                  required: ["name", "weight", "color"]
+                }
+              },
+              suggestions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    name: { type: Type.STRING },
+                    reason: { type: Type.STRING }
+                  },
+                  required: ["id", "name", "reason"]
+                }
+              }
+            },
+            required: ["name", "allocation", "suggestions"]
+          }
+        }
+      });
+
+      if (!response.text) throw new Error("No response generated from AI.");
+      
+      const strategyData = JSON.parse(response.text.trim());
+      setStrategy(strategyData);
+    } catch (error: any) {
+      console.error("AI Generation Error:", error);
+      setGenerateError(error.message || "Failed to generate strategy. Please check your credentials.");
+      // Fallback to mock data if AI fails
       setStrategy({
-        name: `${profile.risk?.toUpperCase()} ${profile.sectors[0]?.toUpperCase() || 'CORE'} STRATEGY`,
+        name: `${profile.risk?.toUpperCase()} ${profile.sectors[0]?.toUpperCase() || 'CORE'} STRATEGY (FALLBACK)`,
         allocation: [
           { name: 'Core Assets', weight: 60, color: '#00FF41' },
           { name: 'Growth Satellite', weight: 25, color: '#3B82F6' },
           { name: 'Hedge/Defensive', weight: 15, color: '#F43F5E' },
         ],
         suggestions: [
-          { id: 'ASML', name: 'ASML Holding', reason: 'High R&D efficiency in Tech sector (Long-term growth).' },
-          { id: 'SAP', name: 'SAP SE', reason: 'Stable recurring revenue, matches Passive risk profile.' },
-          { id: 'NVDA', name: 'NVIDIA Corp', reason: 'Aggressive exposure to semi-thematics.' }
+          { id: 'AAPL', name: 'Apple Inc.', reason: 'Stable tech giant with strong cash flows.' },
+          { id: 'NVDA', name: 'NVIDIA Corp', reason: 'High growth potential in AI accelerators.' },
+          { id: 'SAP', name: 'SAP SE', reason: 'European tech exposure with stable SaaS profile.' }
         ]
       });
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
   };
 
   const runBacktest = () => {
@@ -245,6 +316,13 @@ export default function StrategyBuilder() {
                 <Save size={14} />
               </button>
             </div>
+
+            {generateError && (
+              <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-md">
+                <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-red-400 font-mono leading-tight">{generateError}</p>
+              </div>
+            )}
           </div>
 
           {/* Save Dialog */}

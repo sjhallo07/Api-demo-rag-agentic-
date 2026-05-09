@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, Code, Loader2, Copy, Check } from 'lucide-react';
 import { chatWithGemini } from '../lib/gemini';
 import { cn } from '../lib/utils';

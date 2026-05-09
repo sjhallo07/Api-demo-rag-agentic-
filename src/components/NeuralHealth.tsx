@@ -1,6 +1,6 @@
 import React from 'react';
 import { Database, Zap, Cpu, Activity, BarChart3 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 const DATA_DOMAINS = [
   { name: 'Global_Macro_Vectors', status: 'SYNCHRONIZED', coverage: 98, tokens: '41.2M' },

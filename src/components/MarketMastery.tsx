@@ -11,7 +11,7 @@ import {
   Building2,
   Lock
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 const SECTORS = [
   { sector: "Banking", function: "Deposits, lending, and capital management.", work: "High (Global)", roles: "Retail Banker, Credit Analyst, Branch Manager." },

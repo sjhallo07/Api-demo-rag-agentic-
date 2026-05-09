@@ -11,14 +11,304 @@ import {
   Workflow,
   Network,
   Activity,
-  Code2
+  Code2,
+  Bot,
+  Brain,
+  ListChecks,
+  MessageSquare,
+  Sparkles,
+  Database,
+  Cloud,
+  Search,
+  FileText,
+  User as UserIcon,
+  Play,
+  RotateCcw
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
 interface LandingPageProps {
   onGetStarted: () => void;
 }
+
+const RAGArchitecture = () => {
+  const [activeStep, setActiveStep] = React.useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = React.useState(false);
+
+  const steps = [
+    {
+      id: 1,
+      title: "User Input",
+      desc: "User submits a natural language prompt and query through the terminal interface.",
+      icon: UserIcon,
+      nodes: ['user', 'ui'],
+      color: "text-blue-400"
+    },
+    {
+      id: 2,
+      title: "Task Routing",
+      desc: "The Aggregator Agent receives the query and determines the execution requirements.",
+      icon: MessageSquare,
+      nodes: ['ui', 'aggregator'],
+      color: "text-green-400"
+    },
+    {
+      id: 3,
+      title: "Memory & Planning",
+      desc: "Agent checks long-term history and constructs a plan using CoT (Chain of Thought) or ReACT frameworks.",
+      icon: ListChecks,
+      nodes: ['aggregator', 'planning', 'memory'],
+      color: "text-purple-400"
+    },
+    {
+      id: 4,
+      title: "MCP Tool Fetching",
+      desc: "Sub-agents execute tools across MCP servers (Local, Web Search, Cloud Engines) to retrieve grounded data.",
+      icon: Database,
+      nodes: ['aggregator', 'agents', 'mcp'],
+      color: "text-[#00FF41]"
+    },
+    {
+      id: 5,
+      title: "Model Synthesis",
+      desc: "Prompt + Query + Enhanced Context are sent to the LLM (Gemini, GPT) for final intelligent synthesis.",
+      icon: Sparkles,
+      nodes: ['aggregator', 'models'],
+      color: "text-orange-400"
+    },
+    {
+      id: 6,
+      title: "Response Delivery",
+      desc: "The final synthesized intelligence is delivered back to the terminal for the user.",
+      icon: Zap,
+      nodes: ['aggregator', 'ui'],
+      color: "text-blue-400"
+    }
+  ];
+
+  React.useEffect(() => {
+    let interval: any;
+    if (isAutoPlaying) {
+      interval = setInterval(() => {
+        setActiveStep((prev) => (prev + 1) % steps.length);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [isAutoPlaying]);
+
+  return (
+    <div className="relative w-full max-w-5xl mx-auto py-12 px-4">
+      {/* Diagram Area */}
+      <div className="relative h-[600px] mb-12 bg-[#050505]/50 border border-white/[0.05] rounded-3xl p-8 overflow-hidden">
+        {/* Connection Lines (SVG) */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
+            </marker>
+          </defs>
+          <g className="text-[#3F3F46]">
+            {/* User to UI */}
+            <path d="M 120 100 L 300 100" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+            {/* UI to Aggregator */}
+            <path d="M 500 100 L 500 250" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+            {/* Planning & Memory to Aggregator */}
+            <path d="M 750 200 L 600 300" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+            <path d="M 750 400 L 600 300" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+            {/* Aggregator to Models */}
+            <path d="M 400 300 L 200 300" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+            {/* Aggregator to Agents */}
+            <path d="M 500 350 L 500 450" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+          </g>
+        </svg>
+
+        {/* Nodes */}
+        {/* User */}
+        <div id="node-user" className={cn(
+          "absolute top-10 left-20 transition-all duration-500",
+          steps[activeStep].nodes.includes('user') ? "scale-110 opacity-100" : "scale-100 opacity-40 grayscale"
+        )}>
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-16 h-16 rounded-full bg-[#16161A] border border-[#27272A] flex items-center justify-center">
+              <UserIcon size={32} className="text-blue-400" />
+            </div>
+            <span className="text-[10px] font-mono text-white/50 uppercase tracking-widest">USER</span>
+          </div>
+        </div>
+
+        {/* Chat UI */}
+        <div id="node-ui" className={cn(
+          "absolute top-10 left-[40%] right-[20%] transition-all duration-500",
+          steps[activeStep].nodes.includes('ui') ? "scale-110 opacity-100" : "scale-100 opacity-40 grayscale"
+        )}>
+          <div className="w-full bg-[#16161A] border border-[#27272A] rounded-xl p-4 shadow-2xl">
+            <div className="flex gap-1 mb-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500/50" />
+              <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/50" />
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500/50" />
+            </div>
+            <div className="h-1 bg-[#27272A] rounded w-full mb-2" />
+            <div className="h-1 bg-[#27272A] rounded w-2/3" />
+          </div>
+          <span className="text-[10px] font-mono text-white/50 uppercase tracking-widest mt-2 block text-center">TERMINAL_INTERFACE</span>
+        </div>
+
+        {/* Aggregator Agent */}
+        <div id="node-aggregator" className={cn(
+          "absolute top-[45%] left-[45%] transition-all duration-500 z-10",
+          steps[activeStep].nodes.includes('aggregator') ? "scale-125 opacity-100" : "scale-100 opacity-60 grayscale"
+        )}>
+          <div className="group relative">
+            <div className="absolute -inset-4 bg-[#00FF41]/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
+            <div className="w-24 h-24 rounded-2xl bg-[#00FF41] flex items-center justify-center shadow-[0_0_40px_rgba(0,255,65,0.3)] relative">
+              <Bot size={48} className="text-black" />
+            </div>
+            <span className="text-[11px] font-mono font-bold text-[#00FF41] uppercase tracking-widest mt-3 block text-center">AGGREGATOR_AGENT</span>
+          </div>
+        </div>
+
+        {/* Memory & Planning */}
+        <div className="absolute right-10 top-[20%] space-y-20">
+          <div id="node-memory" className={cn(
+            "transition-all duration-500",
+            steps[activeStep].nodes.includes('memory') ? "scale-110 opacity-100" : "scale-100 opacity-40 grayscale"
+          )}>
+            <div className="flex items-center gap-4 bg-[#16161A] p-4 border border-[#8B5CF6]/30 rounded-2xl">
+              <div className="w-12 h-12 rounded-xl bg-[#8B5CF6]/10 flex items-center justify-center">
+                <Brain size={24} className="text-[#8B5CF6]" />
+              </div>
+              <div className="text-left font-mono">
+                <div className="text-[10px] text-white/50">MEMORY</div>
+                <div className="text-xs font-bold text-white uppercase italic">Context_Recall</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="node-planning" className={cn(
+            "transition-all duration-500",
+            steps[activeStep].nodes.includes('planning') ? "scale-110 opacity-100" : "scale-100 opacity-40 grayscale"
+          )}>
+            <div className="flex items-center gap-4 bg-[#16161A] p-4 border border-[#F59E0B]/30 rounded-2xl">
+              <div className="w-12 h-12 rounded-xl bg-[#F59E0B]/10 flex items-center justify-center">
+                <ListChecks size={24} className="text-[#F59E0B]" />
+              </div>
+              <div className="text-left font-mono">
+                <div className="text-[10px] text-white/50">PLANNING</div>
+                <div className="text-xs font-bold text-white uppercase italic">CoT_Execution</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Generative Models */}
+        <div id="node-models" className="absolute left-10 top-[45%] space-y-4">
+          <div className={cn(
+            "transition-all duration-500",
+            steps[activeStep].nodes.includes('models') ? "scale-110 opacity-100" : "scale-100 opacity-40 grayscale"
+          )}>
+             <div className="flex flex-col gap-3">
+                <div className="flex gap-2">
+                   <div className="w-10 h-10 rounded bg-[#16161A] border border-[#27272A] flex items-center justify-center">
+                      <Sparkles size={20} className="text-[#00FF41]" />
+                   </div>
+                   <div className="w-10 h-10 rounded bg-[#16161A] border border-[#27272A] flex items-center justify-center">
+                      <Sparkles size={20} className="text-[#00A3FF]" />
+                   </div>
+                   <div className="w-10 h-10 rounded bg-[#16161A] border border-[#27272A] flex items-center justify-center">
+                      <Sparkles size={20} className="text-[#8B5CF6]" />
+                   </div>
+                </div>
+                <span className="text-[10px] font-mono text-white/50 text-center uppercase tracking-widest">GEN_MODELS</span>
+             </div>
+          </div>
+        </div>
+
+        {/* Sub-Agents & MCP */}
+        <div id="node-agents" className={cn(
+          "absolute bottom-10 left-[20%] right-[20%] flex justify-center gap-12 transition-all duration-500",
+          steps[activeStep].nodes.includes('agents') ? "scale-110 opacity-100" : "scale-100 opacity-40 grayscale"
+        )}>
+          {['Local', 'Web', 'Cloud'].map((type, i) => (
+            <div key={type} className="flex flex-col items-center gap-3">
+               <div className="w-12 h-12 rounded-full bg-[#16161A] border border-[#27272A] flex items-center justify-center">
+                  <Network size={20} className="text-[#00FF41]/70" />
+               </div>
+               <div className="px-3 py-1.5 bg-[#0D0D0F] border border-[#27272A] rounded font-mono text-[9px] text-[#A1A1AA]">
+                  MCP_{type.toUpperCase()}
+               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Controls & Steps Description */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+             <button 
+                onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-all",
+                  isAutoPlaying ? "bg-[#F43F5E]/10 text-[#F43F5E] border border-[#F43F5E]/30" : "bg-[#00FF41]/10 text-[#00FF41] border border-[#00FF41]/30"
+                )}
+             >
+                {isAutoPlaying ? <RotateCcw size={14} /> : <Play size={14} />}
+                {isAutoPlaying ? "STOP_SIMULATION" : "PLAY_WORKFLOW"}
+             </button>
+             <div className="flex gap-1">
+                {steps.map((_, i) => (
+                  <button 
+                    key={i}
+                    onClick={() => { setActiveStep(i); setIsAutoPlaying(false); }}
+                    className={cn(
+                      "w-8 h-1.5 rounded-full transition-all",
+                      activeStep === i ? "bg-[#00FF41] w-12" : "bg-[#27272A]"
+                    )}
+                  />
+                ))}
+             </div>
+          </div>
+          
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={activeStep}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-4"
+            >
+               <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded bg-[#16161A] text-[10px] font-mono font-bold border border-white/[0.05]", steps[activeStep].color)}>
+                  STEP_{steps[activeStep].id}_06
+               </div>
+               <h3 className="text-3xl font-bold text-white tracking-tight">{steps[activeStep].title}</h3>
+               <p className="text-[#A1A1AA] text-lg leading-relaxed">{steps[activeStep].desc}</p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+           {steps.map((step, i) => (
+             <button 
+                key={step.id}
+                onClick={() => { setActiveStep(i); setIsAutoPlaying(false); }}
+                className={cn(
+                  "p-4 rounded-xl border transition-all text-left group",
+                  activeStep === i 
+                    ? "bg-[#16161A] border-[#00FF41]/30 shadow-[0_0_20px_rgba(0,255,65,0.1)]" 
+                    : "bg-[#09090B] border-[#27272A] hover:border-[#3F3F46]"
+                )}
+             >
+                <step.icon size={20} className={cn("mb-2 transition-transform group-hover:scale-110", activeStep === i ? step.color : "text-[#71717A]")} />
+                <div className="text-[10px] font-mono font-bold text-[#52525B] mb-1">STAGE_{step.id}</div>
+                <div className={cn("text-xs font-bold", activeStep === i ? "text-white" : "text-[#71717A]")}>{step.title.toUpperCase()}</div>
+             </button>
+           ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   return (
@@ -204,6 +494,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Agentic RAG Architecture Section */}
+        <section id="strategy" className="container mx-auto px-6 py-24 border-t border-white/[0.05]">
+          <div className="text-center mb-16 space-y-4">
+             <div className="inline-block px-3 py-1 rounded bg-[#00FF41]/10 border border-[#00FF41]/20 text-[#00FF41] text-[10px] font-mono font-bold uppercase">
+                Architecture_Deep_Dive
+             </div>
+             <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight">How Agentic RAG Works</h2>
+             <p className="text-[#A1A1AA] max-w-2xl mx-auto text-lg">
+                Explore the autonomous orchestration layer that powers BITA's financial research and investment strategy generation.
+             </p>
+          </div>
+
+          <RAGArchitecture />
         </section>
 
         {/* API Services Section */}

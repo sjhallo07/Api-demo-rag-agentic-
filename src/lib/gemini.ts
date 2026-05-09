@@ -5,7 +5,7 @@ import { env, pipeline } from "@xenova/transformers";
 env.allowLocalModels = false;
 env.useBrowserCache = false; // Add this to prevent browser caching issues during dev
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 let localPipeline: any = null;
 

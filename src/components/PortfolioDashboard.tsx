@@ -34,7 +34,7 @@ import {
   Zap,
   Activity
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { PortfolioPosition, getPortfolio, savePortfolio, removeAssetFromPortfolio } from '../services/portfolioService';
 import { INSTRUMENTS, Security } from '../services/universeService';

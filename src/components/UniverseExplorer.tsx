@@ -53,7 +53,7 @@ ChartJS.register(
   ChartLegend,
   Filler
 );
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { Security, UniverseQueryResponse, SavedView } from '../types';
 import { addAssetToPortfolio } from '../services/portfolioService';

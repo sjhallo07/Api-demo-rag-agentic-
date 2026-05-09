@@ -190,8 +190,8 @@ export async function chatWithGemini(prompt: string, type: 'chat' | 'extract' | 
   } catch (error: any) {
     console.error("Gemini API Error (Frontend):", error);
     const msg = error.message || "";
-    if (msg.includes("API key not valid")) {
-       return "Terminal Auth Error: Your BITA Command Key is invalid or has expired.";
+    if (msg.includes("API key not valid") || msg.includes("API key expired")) {
+       return "Terminal Auth Error: Your BITA_AI_API_KEY is invalid or has expired.";
     }
     if (msg.includes("User location is not supported")) {
       return "Geographic Restriction: Gemini is not supported in your region.";

@@ -97,10 +97,13 @@ async function startServer() {
     });
   });
 
-  // Test Gemini API Connectivity
-  app.get("/api/test-gemini", async (req, res) => {
+  // Test BITA AI Connectivity
+  app.get("/api/test-bita", async (req, res) => {
     const isConnected = await bitaAgent.testConnection();
-    res.json({ status: isConnected ? "success" : "failure", message: isConnected ? "Gemini connected" : "Gemini connection failed" });
+    res.json({ 
+      status: isConnected ? "success" : "failure", 
+      message: isConnected ? "BITA AI (Gemini) connected" : "BITA AI connection failed. Check BITA_AI_API_KEY in Secrets." 
+    });
   });
 
   // RAG Orchestrator Endpoint
@@ -141,7 +144,7 @@ async function startServer() {
       const fs = require('fs');
       const envPath = path.join(process.cwd(), '.env');
       const envExists = fs.existsSync(envPath);
-      console.warn(`BITA Warning: BITA_AI_API_KEY is missing from environment. .env file exists: ${envExists}`);
+      console.warn(`BITA Warning: BITA_AI_API_KEY is missing from environment. If running in AI Studio, add a secret named 'BITA_AI_API_KEY'.`);
     }
 
     console.log(`BITA Command Server running on http://localhost:${PORT}`);

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Database, Zap, Cpu, Activity, BarChart3 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Database, Zap, Cpu, Activity, BarChart3, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 const DATA_DOMAINS = [
@@ -10,6 +10,29 @@ const DATA_DOMAINS = [
 ];
 
 export default function NeuralHealth() {
+  const [apiStatus, setApiStatus] = useState<'testing' | 'stable' | 'failure'>('testing');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    const checkApi = async () => {
+      try {
+        const resp = await fetch('/api/test-bita');
+        const data = await resp.json();
+        if (data.status === 'success') {
+          setApiStatus('stable');
+        } else {
+          setApiStatus('failure');
+          setErrorMsg(data.message || 'API connection failed');
+        }
+      } catch (err) {
+        setApiStatus('failure');
+        setErrorMsg('Network error connecting to BITA hub');
+      }
+    };
+    
+    checkApi();
+  }, []);
+
   return (
     <div className="space-y-6 bg-[#0D0D0F] border border-[#1F1F23] rounded-xl p-6">
       <div className="flex items-center justify-between">
@@ -18,8 +41,22 @@ export default function NeuralHealth() {
           <h3 className="text-sm font-mono font-bold text-white uppercase tracking-widest">Neural_Architecture_Status</h3>
         </div>
         <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#00FF41] animate-pulse" />
-            <span className="text-[9px] font-mono text-[#00FF41]">SYSTEM_INTEGRITY_STABLE</span>
+            {apiStatus === 'testing' ? (
+              <>
+                <Loader2 size={12} className="animate-spin text-[#71717A]" />
+                <span className="text-[9px] font-mono text-[#71717A]">VALIDATING_AI_CORE...</span>
+              </>
+            ) : apiStatus === 'stable' ? (
+              <>
+                <CheckCircle2 size={12} className="text-[#00FF41]" />
+                <span className="text-[9px] font-mono text-[#00FF41]">SYSTEM_INTEGRITY_STABLE</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle size={12} className="text-red-500" />
+                <span className="text-[9px] font-mono text-red-500 uppercase">CONNECTION_ERROR: CHECK_API_KEY</span>
+              </>
+            )}
         </div>
       </div>
 
@@ -50,12 +87,20 @@ export default function NeuralHealth() {
 
       <div className="p-4 border border-dashed border-[#1F1F23] rounded-lg bg-black/20">
         <div className="flex items-start gap-4">
-          <Database className="text-[#3B82F6] shrink-0" size={18} />
+          {apiStatus === 'failure' ? (
+            <AlertCircle className="text-red-500 shrink-0" size={18} />
+          ) : (
+            <Database className="text-[#3B82F6] shrink-0" size={18} />
+          )}
           <div className="space-y-1">
-            <p className="text-[10px] font-mono text-white font-bold">RAG_EMBEDDING_ENGINE_v4.2</p>
+            <p className="text-[10px] font-mono text-white font-bold">
+              {apiStatus === 'failure' ? 'RAG_ENGINE_AUTHENTICATION_ERROR' : 'RAG_EMBEDDING_ENGINE_v4.2'}
+            </p>
             <p className="text-[10px] text-[#52525B] leading-relaxed font-mono">
-              The BITA terminal utilizes Gemini Embedding models to vectorize financial identifiers. 
-              Status: <span className="text-[#00FF41]">ACTIVE</span>. Memory Decay: <span className="text-red-500">DISABLED</span>.
+              {apiStatus === 'failure' 
+                ? `CRITICAL: ${errorMsg}. Please update the 'BITA_AI_API_KEY' secret.`
+                : 'The BITA terminal utilizes Gemini Embedding models to vectorize financial identifiers. Status: ACTIVE. Memory Decay: DISABLED.'
+              }
             </p>
           </div>
         </div>

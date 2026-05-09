@@ -53,7 +53,7 @@ TONE: Professional, data-centric, analytical, and concise.`;
     // Robust parsing for quoted strings
     apiKey = apiKey.replace(/^["'](.+)["']$/, '$1').trim();
 
-    console.log(`BITA Orchestrator: Initializing with API_KEY_STATUS: ${apiKey ? "FOUND_AND_NOT_EMPTY" : "NOT_FOUND_OR_EMPTY"}`);
+    console.log(`BITA Orchestrator: Initializing with BITA_AI_API_KEY_STATUS: ${apiKey ? "FOUND_AND_NOT_EMPTY" : "NOT_FOUND_OR_EMPTY"}`);
 
     if (!apiKey || apiKey === "MY_BITA_AI_API_KEY") {
       console.error("BITA Orchestrator: BITA_AI_API_KEY is missing or empty.");
@@ -126,9 +126,9 @@ TONE: Professional, data-centric, analytical, and concise.`;
       const errorMsg = error.message || "";
       const errorJson = JSON.stringify(error);
       
-      if (errorMsg.includes("API key not valid") || errorJson.includes("API_KEY_INVALID")) {
+      if (errorMsg.includes("API key not valid") || errorJson.includes("API_KEY_INVALID") || errorMsg.includes("API key expired") || errorJson.includes("API_KEY_EXPIRED")) {
         return {
-          content: "AUTHENTICATION_FAILED: The provided BITA_AI_API_KEY is invalid. Please verify your key in the 'Secrets' panel. BITA requires a valid license key for agentic orchestration.",
+          content: "AUTHENTICATION_FAILED: The provided BITA_AI_API_KEY is invalid or has expired. Please renew your key in the 'Secrets' panel in AI Studio Settings.",
           data: []
         };
       }

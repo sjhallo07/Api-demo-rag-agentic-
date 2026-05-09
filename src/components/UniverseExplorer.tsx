@@ -59,6 +59,7 @@ import { Security, UniverseQueryResponse, SavedView } from '../types';
 import { addAssetToPortfolio } from '../services/portfolioService';
 import { UNIVERSE_METADATA } from '../constants';
 import SmartUniverseAssistant from './SmartUniverseAssistant';
+import ThemeExposureHistoryChart from './ThemeExposureHistoryChart';
 
 export default function UniverseExplorer() {
   const [query, setQuery] = useState('');
@@ -1048,88 +1049,29 @@ export default function UniverseExplorer() {
            </div>
 
            {/* Real-time Theme Exposure Chart */}
-           <div className="bg-[#0D0D0F] border border-[#1F1F23] rounded-lg p-6 flex flex-col h-[350px]">
+           <div className="bg-[#0D0D0F] border border-[#1F1F23] rounded-lg p-6 flex flex-col h-[380px] lg:h-[450px]">
               <div className="flex items-center justify-between mb-6">
                  <div className="space-y-1">
-                    <h3 className="text-sm font-mono font-bold flex items-center gap-2">
+                    <h3 className="text-sm font-mono font-bold flex items-center gap-2 text-white">
                        <TrendingUp size={14} className="text-[#00FF41]" />
-                       THEME_EXPOSURE_TRAJECTORY
+                       THEMATIC_EXPOSURE_INTELLIGENCE
                     </h3>
-                    <p className="text-xs text-[#52525B]">Real-time concentration drift for active thematic baskets</p>
+                    <p className="text-[10px] font-mono text-[#52525B] uppercase tracking-tight">Real-time concentration drift for active thematic baskets</p>
                  </div>
                  <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#00FF41]/5 border border-[#00FF41]/10">
                        <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
-                       <span className="text-[8px] font-mono text-[#00FF41]">LIVE_STREAM</span>
+                       <span className="text-[8px] font-mono text-[#00FF41] font-bold">STREAMING_ACTV</span>
                     </div>
                  </div>
               </div>
               
-              <div className="flex-1 w-full">
-                 <Line 
-                    data={{
-                      labels: themeExposureHistory.map(d => d.time),
-                      datasets: (selectedThemes.length > 0 ? selectedThemes : [THEMES[0], THEMES[1], THEMES[2]]).map((theme, idx) => ({
-                        label: theme,
-                        data: themeExposureHistory.map(d => d[theme] as number),
-                        borderColor: idx === 0 ? '#00FF41' : idx === 1 ? '#3B82F6' : idx === 2 ? '#F59E0B' : '#8B5CF6',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        tension: 0.4
-                      }))
-                    }}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      animation: false,
-                      scales: {
-                        x: {
-                          grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                          ticks: {
-                            color: '#52525B',
-                            font: { size: 8, family: 'monospace' },
-                            maxTicksLimit: 5
-                          },
-                          display: themeExposureHistory.length >= 5
-                        },
-                        y: {
-                          grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                          ticks: {
-                            color: '#52525B',
-                            font: { size: 8, family: 'monospace' }
-                          }
-                        }
-                      },
-                      plugins: {
-                        legend: { 
-                          position: 'top',
-                          align: 'end',
-                          labels: {
-                            color: '#52525B',
-                            font: { size: 8, family: 'monospace' },
-                            usePointStyle: true,
-                            boxWidth: 6
-                          }
-                        },
-                        tooltip: {
-                          backgroundColor: '#0D0D0F',
-                          titleColor: '#00FF41',
-                          bodyColor: '#E4E4E7',
-                          borderColor: '#1F1F23',
-                          borderWidth: 1,
-                          titleFont: { family: 'monospace', size: 10 },
-                          bodyFont: { family: 'monospace', size: 10 },
-                        }
-                      }
-                    }}
+              <div className="flex-1 w-full min-h-0">
+                 <ThemeExposureHistoryChart 
+                   history={themeExposureHistory}
+                   selectedThemes={selectedThemes}
+                   isLiveMode={isLiveMode}
                  />
-                 {themeExposureHistory.length === 0 && (
-                   <div className="absolute inset-0 flex items-center justify-center bg-[#0D0D0F]/80">
-                      <p className="text-[10px] font-mono text-[#52525B] animate-pulse">WAITING_FOR_MARKET_TICK...</p>
-                   </div>
-                 )}
               </div>
            </div>
         </div>

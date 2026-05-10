@@ -3,7 +3,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { bitaAgent } from "./src/services/agentService.ts";
-import { searchUniverse } from "./src/services/universeService.ts";
+import { searchUniverse, batchSearchUniverse } from "./src/services/universeService.ts";
 
 async function startServer() {
   const app = express();
@@ -18,6 +18,19 @@ async function startServer() {
     res.json({
       status: "success",
       query,
+      results
+    });
+  });
+
+  // Batch Search API
+  app.post("/api/universe/batch-search", (req, res) => {
+    const { batch } = req.body;
+    if (!Array.isArray(batch)) {
+      return res.status(400).json({ status: "error", message: "Batch must be an array" });
+    }
+    const results = batchSearchUniverse(batch);
+    res.json({
+      status: "success",
       results
     });
   });

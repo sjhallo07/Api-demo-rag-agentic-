@@ -50,7 +50,7 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-export type ModuleId = "universe" | "analytics" | "backtesting" | "thematics" | "factsheets" | "data" | "strategy" | "mobile_preview" | "docs" | "admin" | "payments" | "profile" | "market_mastery";
+export type ModuleId = "universe" | "analytics" | "backtesting" | "thematics" | "factsheets" | "data" | "strategy" | "mobile_preview" | "docs" | "admin" | "payments" | "profile" | "market_mastery" | "intelligence";
 
 export interface StrategyTemplate {
   id: string;

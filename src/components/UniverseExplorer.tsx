@@ -60,6 +60,7 @@ import { addAssetToPortfolio } from '../services/portfolioService';
 import { UNIVERSE_METADATA } from '../constants';
 import SmartUniverseAssistant from './SmartUniverseAssistant';
 import ThemeExposureHistoryChart from './ThemeExposureHistoryChart';
+import { batchSearchService } from '../services/batchSearchService';
 
 export default function UniverseExplorer() {
   const [query, setQuery] = useState('');
@@ -148,19 +149,8 @@ export default function UniverseExplorer() {
     }
 
     try {
-      const response = await fetch('/api/universe/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: val, filters: searchFilters })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server returned ${response.status}: ${response.statusText}`);
-      }
-
-      const data: UniverseQueryResponse = await response.json();
-      setSecurities(data.results || []);
+      const results = await batchSearchService.search(val, searchFilters);
+      setSecurities(results || []);
     } catch (error: any) {
       console.error(error);
       setErrorStatus(`DATA_FETCH_FAILURE: ${error.message}`);
@@ -220,12 +210,29 @@ export default function UniverseExplorer() {
     setBatchQueue(batchQueue.filter((_, i) => i !== index));
   };
 
-  const processBatchQueue = () => {
+  const processBatchQueue = async () => {
     if (batchQueue.length > 0) {
-      const combinedQuery = batchQueue.join(" OR ");
-      performSearch(combinedQuery, { sector: selectedSector, themes: selectedThemes, minEsg });
-      setQuery(combinedQuery);
-      setBatchQueue([]);
+      setIsLoading(true);
+      try {
+        const batchRequests = batchQueue.map(q => 
+          batchSearchService.search(q, { sector: selectedSector, themes: selectedThemes, minEsg })
+        );
+        
+        const batchResults = await Promise.all(batchRequests);
+        
+        // Merge results and remove duplicates
+        const allSecurities = batchResults.flat();
+        const uniqueSecurities = allSecurities.filter((s, index, self) =>
+          index === self.findIndex((t) => t.id === s.id)
+        );
+        
+        setSecurities(uniqueSecurities);
+        setBatchQueue([]);
+      } catch (error: any) {
+        setErrorStatus(`BATCH_PROCESS_FAILURE: ${error.message}`);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -524,7 +531,18 @@ export default function UniverseExplorer() {
               >
                 APPLY_UNIVERSE_LOGIC
               </button>
-              <button className="text-[10px] font-mono text-[#52525B] hover:text-white transition-colors">
+              <button 
+                onClick={() => {
+                   const name = prompt("TEMPLATE_NAME:");
+                   if (name) {
+                      const template = { name, rules, timestamp: new Date().toISOString() };
+                      const templates = JSON.parse(localStorage.getItem('BITA_RULE_TEMPLATES') || '[]');
+                      localStorage.setItem('BITA_RULE_TEMPLATES', JSON.stringify([...templates, template]));
+                      alert(`TEMPLATE_SAVED: ${name.toUpperCase()}`);
+                   }
+                }}
+                className="text-[10px] font-mono text-[#52525B] hover:text-[#00FF41] transition-colors"
+              >
                 SAVE_AS_TEMPLATE
               </button>
            </div>
@@ -946,7 +964,14 @@ export default function UniverseExplorer() {
                       <span className="text-[9px] font-mono text-[#52525B]">BETA_PROFILE</span>
                       <span className="text-[9px] font-mono text-[#E4E4E7]">1.24 (High)</span>
                    </div>
-                   <button className="w-full py-2 bg-[#1F1F23] rounded text-[9px] font-mono text-[#00FF41] hover:bg-[#2A2A30] transition-colors border border-[#00FF41]/10">
+                   <button 
+                     onClick={() => {
+                        setIsAssistantOpen(true);
+                        // We can't directly set the prompt in SmartUniverseAssistant easily without props changes, 
+                        // but we can at least open it.
+                     }}
+                     className="w-full py-2 bg-[#1F1F23] rounded text-[9px] font-mono text-[#00FF41] hover:bg-[#2A2A30] transition-colors border border-[#00FF41]/10"
+                   >
                       EXPLORE_DEEP_INSIGHTS
                    </button>
                 </motion.div>
@@ -1294,6 +1319,131 @@ export default function UniverseExplorer() {
         onApplyFilters={handleApplySmartFilters}
         results={securities}
       />
+
+      {/* Security Detail Sidebar Overlay */}
+      <AnimatePresence>
+        {selectedSecurity && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedSecurity(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] lg:hidden"
+            />
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-[#0D0D0F] border-l border-[#1F1F23] shadow-2xl z-[80] flex flex-col"
+            >
+              <div className="p-6 border-b border-[#1F1F23] flex items-center justify-between bg-[#16161A]/50">
+                 <div className="flex items-center gap-3">
+                    <div className="p-2 bg-[#00FF41]/10 rounded border border-[#00FF41]/20">
+                       <Zap size={18} className="text-[#00FF41]" />
+                    </div>
+                    <div>
+                       <h2 className="text-lg font-bold text-white leading-none">{selectedSecurity.id}</h2>
+                       <p className="text-[10px] font-mono text-[#52525B] mt-1 uppercase tracking-tighter">{selectedSecurity.name}</p>
+                    </div>
+                 </div>
+                 <button 
+                   onClick={() => setSelectedSecurity(null)}
+                   className="p-2 hover:bg-[#1F1F23] rounded-full text-[#71717A] hover:text-white transition-colors"
+                 >
+                   <X size={20} />
+                 </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-black/20 border border-[#1F1F23] rounded-lg">
+                       <p className="text-[10px] font-mono text-[#52525B] mb-1">SCORE</p>
+                       <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold text-white">{selectedSecurity.score.toFixed(4)}</span>
+                          <span className={cn(
+                            "text-[10px] font-mono font-bold",
+                            selectedSecurity.momentum > 0.8 ? "text-[#00FF41]" : "text-red-500"
+                          )}>
+                             {selectedSecurity.momentum > 0.8 ? 'OVERWEIGHT' : 'NEUTRAL'}
+                          </span>
+                       </div>
+                    </div>
+                    <div className="p-4 bg-black/20 border border-[#1F1F23] rounded-lg">
+                       <p className="text-[10px] font-mono text-[#52525B] mb-1">ESG_RATING</p>
+                       <div className="flex items-baseline gap-2">
+                          <span className={cn(
+                            "text-2xl font-bold",
+                            selectedSecurity.esg.includes('A') ? "text-green-400" : "text-yellow-400"
+                          )}>{selectedSecurity.esg}</span>
+                          <ShieldCheck size={14} className={selectedSecurity.esg.includes('A') ? "text-green-400" : "text-yellow-400"} />
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="space-y-4">
+                    <h3 className="text-[10px] font-mono font-bold text-[#52525B] border-b border-[#1F1F23] pb-2 tracking-widest">METADATA_EXTRACT</h3>
+                    <div className="grid grid-cols-1 gap-3">
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-[#71717A] font-mono">SECTOR</span>
+                          <span className="text-white font-bold">{selectedSecurity.sector}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-[#71717A] font-mono">THEME_BASKET</span>
+                          <span className="text-[#3B82F6] font-bold">{selectedSecurity.theme}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-[#71717A] font-mono">P/E_RATIO</span>
+                          <span className="text-white font-mono">{selectedSecurity.pe?.toFixed(2) || 'N/A'}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-[#71717A] font-mono">MARKET_CAP</span>
+                          <span className="text-white font-mono">{selectedSecurity.marketCap || 'N/A'}</span>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="pt-4">
+                    <button 
+                      onClick={() => {
+                        addAssetToPortfolio(selectedSecurity, 100);
+                        // Optional: Show success state or close panel
+                        setSelectedSecurity(null);
+                      }}
+                      className="w-full py-4 bg-[#00FF41] hover:bg-[#00E53B] text-black font-bold text-sm rounded-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(0,255,65,0.2)]"
+                    >
+                       <Plus size={20} />
+                       ADD_TO_INTEL_PORTFOLIO (100 UNITS)
+                    </button>
+                    <p className="text-[9px] font-mono text-[#52525B] text-center mt-3 uppercase">
+                       Action will execute a simulate block order on the BITA engine
+                    </p>
+                 </div>
+
+                 <div className="p-4 bg-[#00FF41]/5 border border-[#00FF41]/20 rounded-lg space-y-2">
+                    <div className="flex items-center gap-2 text-[10px] font-mono font-bold text-[#00FF41]">
+                       <BrainCircuit size={14} />
+                       AI_RATIONALE
+                    </div>
+                    <p className="text-[10px] font-mono text-[#71717A] leading-relaxed">
+                       Security exhibits high thematic sensitivity to <span className="text-white">{selectedSecurity.theme}</span> megatrends. 
+                       Factor score of <span className="text-white">{selectedSecurity.score.toFixed(3)}</span> suggests optimal risk-adjusted exposure 
+                       relative to the current {selectedSecurity.sector} benchmark.
+                    </p>
+                 </div>
+              </div>
+
+              <div className="p-6 border-t border-[#1F1F23] bg-[#0A0A0B]">
+                 <div className="flex items-center justify-between text-[8px] font-mono text-[#3F3F46]">
+                    <span>SEC_ID: {selectedSecurity.id.toLowerCase()}_v4.2</span>
+                    <span>TIMESTAMP: {new Date().toISOString()}</span>
+                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

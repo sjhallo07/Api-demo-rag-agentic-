@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Terminal, 
   Layers, 
@@ -18,6 +18,7 @@ import {
   X,
   Plus,
   BrainCircuit,
+  Cpu,
   BookOpen,
   ShieldAlert,
   CreditCard,
@@ -36,6 +37,7 @@ import AnalyticsDashboard from './components/AnalyticsDashboard.tsx';
 import AdminIntelligence from './components/AdminIntelligence.tsx';
 import MobilePreview from './components/MobilePreview.tsx';
 import ApiDocs from './components/ApiDocs.tsx';
+import IntelligenceDocumentation from './components/IntelligenceDocumentation.tsx';
 import MarketMastery from './components/MarketMastery.tsx';
 import LandingPage from './components/LandingPage.tsx';
 import AuthModule from './components/AuthModule.tsx';
@@ -79,6 +81,7 @@ const MODULES = [
   { id: 'universe' as ModuleId, name: 'Universe Construction', icon: Layers, description: 'Slice and dice based on geography, sectors, and factors.' },
   { id: 'analytics' as ModuleId, name: 'Portfolio Dashboard', icon: BarChart3, description: 'Interactive visualization of portfolio allocation, performance, and ESG.' },
   { id: 'strategy' as ModuleId, name: 'Strategy Builder', icon: BrainCircuit, description: 'Personalized investment strategies based on your profile.' },
+  { id: 'intelligence' as ModuleId, name: 'Intelligence Architecture', icon: Cpu, description: 'Documentation on RAG pipeline, chunking, and data ingestion.' },
   { id: 'payments' as ModuleId, name: 'Billing Infrastructure', icon: CreditCard, description: 'Manage institutional subscription and billing.' },
   { id: 'admin' as ModuleId, name: 'Admin Intelligence', icon: ShieldAlert, description: 'Manage financial knowledge base and agent learning tokens.' },
   { id: 'market_mastery' as ModuleId, name: 'Market Mastery', icon: BookOpen, description: 'Insights on financial sectors, careers, and global markets.' },
@@ -89,9 +92,55 @@ const MODULES = [
 function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void }) {
   const [activeModule, setActiveModule] = useState<ModuleId>('universe');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [chatWidth, setChatWidth] = useState(400);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
+
+  // Resize logic for Sidebar
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+
+  // Resize logic for Chat
+  const chatRef = useRef<HTMLDivElement>(null);
+  const [isResizingChat, setIsResizingChat] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizingSidebar) {
+        const newWidth = e.clientX;
+        if (newWidth > 64 && newWidth < 450) {
+          setSidebarWidth(newWidth);
+          if (newWidth < 120) setIsSidebarOpen(false);
+          else setIsSidebarOpen(true);
+        }
+      }
+      if (isResizingChat) {
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth > 300 && newWidth < 800) {
+          setChatWidth(newWidth);
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingSidebar(false);
+      setIsResizingChat(false);
+      document.body.style.cursor = 'default';
+    };
+
+    if (isResizingSidebar || isResizingChat) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingSidebar, isResizingChat]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -105,21 +154,22 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
 
   return (
     <div className="flex h-screen w-full bg-[#0A0A0B] text-[#E4E4E7] font-sans selection:bg-[#00FF41] selection:text-black overflow-hidden animate-in fade-in duration-700">
-      {/* Sidebar (Rest of logic remains same, just moved to component) */}
       {/* Sidebar */}
       <aside 
+        ref={sidebarRef}
+        style={{ width: isSidebarOpen ? sidebarWidth : 64 }}
         className={cn(
-          "relative flex flex-col border-r border-[#1F1F23] bg-[#0D0D0F] transition-all duration-300 z-50",
-          isSidebarOpen ? "w-72" : "w-16"
+          "relative hidden lg:flex flex-col border-r border-[#1F1F23] bg-[#0D0D0F] transition-[width] duration-75 z-50",
+          !isSidebarOpen && "items-center"
         )}
       >
-        <div className="p-4 flex items-center gap-3 border-bottom border-[#1F1F23]">
+        <div className="p-4 flex items-center gap-3 border-b border-[#1F1F23] h-14 shrink-0">
           <button 
             onClick={handleOpenTermux}
             title="Open Local Termux (Android)"
-            className="w-8 h-8 rounded-sm bg-[#00FF41] flex items-center justify-center text-black hover:bg-[#00E53B] transition-all active:scale-95 group relative"
+            className="w-8 h-8 shrink-0 rounded-sm bg-[#00FF41] flex items-center justify-center text-black hover:bg-[#00E53B] transition-all active:scale-95 group relative"
           >
-            <Terminal size={20} />
+            <Terminal size={18} />
             {!isSidebarOpen && (
               <div className="absolute left-full ml-2 px-2 py-1 bg-[#1F1F23] text-[#00FF41] text-[10px] font-mono rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 border border-[#00FF41]/20">
                 OPEN_TERMUX
@@ -127,11 +177,11 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
             )}
           </button>
           {isSidebarOpen && (
-            <span className="font-mono font-bold tracking-tighter text-xl">BITA COMMAND</span>
+            <span className="font-mono font-bold tracking-tighter text-lg truncate">BITA COMMAND</span>
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1 custom-scrollbar">
           {MODULES.map((module) => (
             <button
               key={module.id}
@@ -139,38 +189,39 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-all group relative overflow-hidden",
                 activeModule === module.id 
-                  ? "bg-[#1F1F23] text-white shadow-[0_0_15px_rgba(0,255,65,0.1)]" 
+                  ? "bg-[#1F1F23] text-white shadow-[0_0_15px_rgba(0,255,65,0.05)] border border-[#00FF41]/10" 
                   : "text-[#71717A] hover:bg-[#16161A] hover:text-[#E4E4E7]"
               )}
             >
               <module.icon className={cn("shrink-0", activeModule === module.id ? "text-[#00FF41]" : "text-[#71717A] group-hover:text-[#00FF41]")} size={18} />
               {isSidebarOpen && (
-                <div className="flex flex-col items-start leading-none gap-0.5">
-                  <span className="text-sm font-medium">{module.name}</span>
+                <div className="flex flex-col items-start leading-none gap-0.5 truncate">
+                  <span className="text-sm font-medium truncate">{module.name}</span>
                 </div>
               )}
               {activeModule === module.id && (
                 <motion.div 
-                  layoutId="active-nav"
-                  className="absolute left-0 w-1 h-2/3 bg-[#00FF41] rounded-r-full"
+                  layoutId="active-nav-indicator"
+                  className="absolute left-0 w-1 h-3/4 bg-[#00FF41] rounded-r-full shadow-[0_0_8px_rgba(0,255,65,0.5)]"
                 />
               )}
             </button>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-[#1F1F23]">
+        <div className="p-4 border-t border-[#1F1F23] shrink-0">
           {isSidebarOpen ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-[11px] font-mono text-[#52525B]">
-                <span>SYSTEM STATUS</span>
-                <span className="text-[#00FF41] flex items-center gap-1">
+              <div className="flex items-center justify-between text-[10px] font-mono text-[#52525B]">
+                <span>SYSTEM_INTEGRITY</span>
+                <span className="text-[#00FF41] flex items-center gap-1.5 font-bold">
                   <div className="w-1 h-1 rounded-full bg-[#00FF41] animate-pulse" />
-                  ONLINE
+                  STABLE
                 </span>
               </div>
-              <div className="text-[11px] font-mono text-[#52525B]">
-                {currentTime.toLocaleTimeString()} - {currentTime.toLocaleDateString()}
+              <div className="text-[10px] font-mono text-[#3F3F46] flex items-center justify-between">
+                <span>{currentTime.toLocaleTimeString([], { hour12: false })}</span>
+                <span>v4.2.0</span>
               </div>
             </div>
           ) : (
@@ -179,45 +230,53 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
             </div>
           )}
         </div>
+
+        {/* Resize Handle */}
+        <div 
+          onMouseDown={() => setIsResizingSidebar(true)}
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-[#00FF41]/20 transition-colors z-50 group"
+        >
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 bg-[#1F1F23] group-hover:bg-[#00FF41] rounded-full transition-colors" />
+        </div>
       </aside>
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col relative overflow-hidden">
         {/* Header */}
-        <header className="h-14 border-b border-[#1F1F23] bg-[#0D0D0F]/80 backdrop-blur-md flex items-center justify-between px-6 z-40">
+        <header className="h-14 border-b border-[#1F1F23] bg-[#0D0D0F]/80 backdrop-blur-md flex items-center justify-between px-6 z-40 shrink-0">
           <div className="flex items-center gap-6">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-1 hover:bg-[#1F1F23] rounded transition-colors text-[#71717A] hover:text-white"
+              className="p-1.5 hover:bg-[#1F1F23] rounded transition-colors text-[#71717A] hover:text-white"
             >
-              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
-            <div className="flex items-center gap-2 text-xs font-mono text-[#71717A]">
-              <Compass size={14} />
-              <span>TERMINAL / {MODULES.find(m => m.id === activeModule)?.name?.toUpperCase()}</span>
+            <div className="flex items-center gap-2 text-xs font-mono text-[#71717A] truncate max-w-[200px] sm:max-w-none">
+              <Compass size={14} className="shrink-0" />
+              <span className="truncate">TERMINAL / {MODULES.find(m => m.id === activeModule)?.name?.toUpperCase()}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
              <button 
                onClick={() => setIsDocsModalOpen(true)}
-               className="hidden sm:flex items-center gap-2 px-3 py-1 bg-[#00FF41]/10 border border-[#00FF41]/20 rounded text-[10px] font-mono text-[#00FF41] hover:bg-[#00FF41]/20 transition-all font-bold"
+               className="hidden sm:flex items-center gap-2 px-3 py-1 bg-[#00FF41]/10 border border-[#00FF41]/20 rounded text-[9px] font-mono text-[#00FF41] hover:bg-[#00FF41]/20 transition-all font-bold tracking-widest"
              >
                 <BookOpen size={12} />
-                DOCS_VER_1.0
+                DOCS_v1.0
              </button>
-             <div className="hidden lg:flex items-center gap-3 px-3 py-1 bg-[#16161A] border border-[#1F1F23] rounded text-[11px] font-mono">
-                <span className="text-[#52525B]">TERMINAL:</span>
-                <span className="text-[#00FF41]">{user.name.toUpperCase()}</span>
+             <div className="hidden lg:flex items-center gap-3 px-3 py-1 bg-[#16161A] border border-[#1F1F23] rounded text-[10px] font-mono">
+                <span className="text-[#52525B]">USER_PROFILE:</span>
+                <span className="text-[#00FF41] font-bold">{user.name.toUpperCase()}</span>
              </div>
              <button 
                 onClick={onLogout}
                 className="p-2 hover:bg-red-500/10 hover:text-red-400 rounded transition-colors text-[#52525B]"
-                title="EXIT_SIGNAL"
+                title="TERMINATE_SESSION"
              >
                 <LogOut size={18} />
              </button>
-             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1F1F23] to-[#0A0A0B] border border-[#1F1F23] flex items-center justify-center overflow-hidden">
+             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1F1F23] to-[#0A0A0B] border border-[#1F1F23] flex items-center justify-center overflow-hidden shrink-0">
                 {user.avatar ? <img src={user.avatar} alt="avatar" /> : <UserIcon size={14} />}
              </div>
           </div>
@@ -323,6 +382,17 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
                 >
                   <AdminIntelligence />
                 </motion.div>
+              ) : activeModule === 'intelligence' ? (
+                <motion.div
+                  key="intelligence"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="h-full overflow-hidden"
+                >
+                  <IntelligenceDocumentation />
+                </motion.div>
               ) : activeModule === 'mobile_preview' ? (
                 <motion.div
                   key="mobile"
@@ -378,16 +448,35 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
           </div>
 
           {/* Chat Terminal Sidebar */}
-          <div className="lg:w-[450px] w-full border-l border-[#1F1F23] bg-[#0D0D0F] flex flex-col h-full lg:pb-0 pb-16">
-            <div className="p-4 border-b border-[#1F1F23] flex items-center justify-between">
-               <div className="flex items-center gap-2">
-                 <div className="w-2 h-2 rounded-full bg-[#00FF41]" />
-                 <span className="text-xs font-mono font-bold">BITA ASSISTANT</span>
-               </div>
-               <span className="text-[10px] font-mono text-[#52525B]">v4.2.0-HYBRID</span>
+          <div 
+            ref={chatRef}
+            style={{ width: chatWidth }}
+            className="relative lg:flex hidden border-l border-[#1F1F23] bg-[#0D0D0F] flex-col h-full overflow-hidden"
+          >
+            {/* Resize Handle (Left side) */}
+            <div 
+              onMouseDown={() => setIsResizingChat(true)}
+              className="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-[#00FF41]/20 transition-colors z-50 group"
+            >
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 bg-[#1F1F23] group-hover:bg-[#00FF41] rounded-full transition-colors" />
             </div>
-            <ChatTerminal />
+
+            <div className="p-4 border-b border-[#1F1F23] flex items-center justify-between shrink-0 bg-[#0D0D0F]">
+               <div className="flex items-center gap-2">
+                 <div className="w-2 h-2 rounded-full bg-[#00FF41] shadow-[0_0_8px_rgba(0,255,65,0.5)]" />
+                 <span className="text-[10px] font-mono font-bold tracking-widest">BITA_ASSIST_v4.2</span>
+               </div>
+               <span className="text-[9px] font-mono text-[#3F3F46] uppercase">Active_Session</span>
+            </div>
+            <div className="flex-1 overflow-hidden">
+               <ChatTerminal />
+            </div>
           </div>
+        </div>
+
+        {/* Mobile View Terminal Overlay (Hidden by default, used when chat is active on mobile) */}
+        <div className="lg:hidden flex flex-col h-full overflow-hidden">
+           <ChatTerminal />
         </div>
 
         {/* Mobile Navbar (FontAwesome) */}

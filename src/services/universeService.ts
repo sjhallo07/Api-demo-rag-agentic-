@@ -111,3 +111,11 @@ export function searchUniverse(query?: string, filters?: any) {
 
   return results.slice(0, 10);
 }
+
+export function batchSearchUniverse(batch: { query?: string; filters?: any }[]) {
+  return batch.map(request => ({
+    query: request.query,
+    filters: request.filters,
+    results: searchUniverse(request.query, request.filters)
+  }));
+}

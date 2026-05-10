@@ -310,6 +310,103 @@ const RAGArchitecture = () => {
   );
 };
 
+const DataLearningSection = ({ onGetStarted }: { onGetStarted: () => void }) => {
+  return (
+    <section id="strategy" className="container mx-auto px-6 py-24 border-t border-white/[0.05]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="relative order-2 lg:order-1">
+          <div className="absolute inset-0 bg-[#00FF41]/5 blur-3xl rounded-full" />
+          <div className="relative bg-[#0D0D0F] border border-[#1F1F23] rounded-3xl p-8 space-y-6">
+            <div className="flex items-center gap-3 border-b border-[#1F1F23] pb-4">
+              <Database className="text-[#00FF41]" size={24} />
+              <h3 className="text-xl font-bold text-white font-mono uppercase tracking-widest">DATA_LEARNING_PIPELINE</h3>
+            </div>
+            
+            <div className="space-y-6">
+              {[
+                { 
+                  icon: FileText, 
+                  title: 'Multimodal Ingestion', 
+                  desc: 'Drop PDF, MD, or TXT research into the terminal. Support for raw financial identifier extraction.',
+                  color: 'text-blue-400' 
+                },
+                { 
+                  icon: Layers, 
+                  title: 'LangChain Semantic Splitting', 
+                  desc: 'Large files are processed via RecursiveCharacterTextSplitter. (Chunk: 1000, Overlap: 200).',
+                  color: 'text-[#00FF41]' 
+                },
+                { 
+                  icon: Brain, 
+                  title: 'Vector Embedding', 
+                  desc: 'Google Gemini converts semantic chunks into high-dimensional numerical representations.',
+                  color: 'text-purple-400' 
+                }
+              ].map((item, i) => (
+                <div key={i} className="flex gap-4">
+                  <div className={cn("shrink-0 w-10 h-10 rounded bg-[#16161A] border border-white/[0.05] flex items-center justify-center", item.color)}>
+                    <item.icon size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-bold text-sm mb-1">{item.title}</h4>
+                    <p className="text-[#71717A] text-xs leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 bg-[#00FF41]/5 border border-[#00FF41]/10 rounded-xl space-y-2">
+               <div className="flex items-center gap-2 text-[10px] font-mono font-bold text-[#00FF41]">
+                  <Zap size={14} />
+                  ORCHESTRATOR_LOG: CHUNKING_COMPLETED
+               </div>
+               <div className="h-1.5 w-full bg-[#1F1F23] rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    whileInView={{ width: '100%' }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                    className="h-full bg-[#00FF41]" 
+                  />
+               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-8 order-1 lg:order-2">
+          <div className="space-y-4">
+            <div className="inline-block px-3 py-1 rounded bg-[#00FF41]/10 border border-[#00FF41]/20 text-[#00FF41] text-[10px] font-mono font-bold uppercase tracking-widest">
+              Contextual_Intelligence
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight leading-[1.1]">Teach BITA Your <br/> Proprietary View</h2>
+            <p className="text-[#A1A1AA] text-lg leading-relaxed">
+              Upload your private research documents, market notes, and Excel summaries. BITA uses advanced RAG (Retrieval-Augmented Generation) to merge your qualitative insights with real-time quantitative telemetry.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+             <div className="p-4 bg-[#16161A] border border-white/[0.05] rounded-xl hover:border-[#00FF41]/30 transition-colors">
+                <div className="text-3xl font-bold text-white mb-1">1000</div>
+                <div className="text-[10px] font-mono text-[#52525B] uppercase font-bold tracking-widest">CHUNK_SIZE_CHAR</div>
+             </div>
+             <div className="p-4 bg-[#16161A] border border-white/[0.05] rounded-xl hover:border-[#00FF41]/30 transition-colors">
+                <div className="text-3xl font-bold text-white mb-1">200</div>
+                <div className="text-[10px] font-mono text-[#52525B] uppercase font-bold tracking-widest">OVERLAP_RATIO</div>
+             </div>
+          </div>
+
+          <button 
+            onClick={onGetStarted}
+            className="flex items-center gap-3 px-6 py-3 bg-[#1F1F23] text-white border border-white/[0.1] rounded-lg text-sm font-bold hover:bg-[#2A2A30] hover:border-[#00FF41]/30 transition-all group"
+          >
+            START_LEARNING_SESSION
+            <MoveRight size={18} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   return (
     <div className="min-h-screen bg-[#050505] text-[#E4E4E7] selection:bg-[#00FF41]/30 selection:text-white overflow-hidden">
@@ -330,8 +427,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           <span className="font-bold text-xl tracking-tighter text-white">BITA_INTELLIGENCE</span>
         </div>
         <div className="hidden md:flex items-center gap-8">
-          {['Infrastructure', 'Strategy', 'Analytics', 'APIs'].map((item) => (
-            <a key={item} href={`#${item.toLowerCase()}`} className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors">{item}</a>
+          {['Infrastructure', 'Self-Learning', 'Analytics', 'APIs'].map((item) => (
+            <a key={item} href={`#${item.toLowerCase().replace('self-learning', 'strategy')}`} className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors">{item}</a>
           ))}
           <button 
             onClick={onGetStarted}
@@ -389,8 +486,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 PROVISION_TERMINAL_ACCESS
                 <MoveRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </button>
-              <button className="w-full sm:w-auto px-8 py-4 bg-[#16161A] border border-[#27272A] rounded-lg text-white font-bold text-sm hover:bg-[#1C1C21] transition-all">
-                VIEW_DOCUMENTATION
+              <button 
+                onClick={onGetStarted} // Redirect to login for now, where they can see docs
+                className="w-full sm:w-auto px-8 py-4 bg-[#16161A] border border-[#27272A] rounded-lg text-white font-bold text-sm hover:bg-[#1C1C21] transition-all"
+              >
+                VIEW_ARM_ARCHITECTURE
               </button>
             </motion.div>
           </div>
@@ -419,6 +519,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             ))}
           </div>
         </section>
+
+        {/* Data Learning Section (INSERTED HERE) */}
+        <DataLearningSection onGetStarted={onGetStarted} />
 
         {/* Technical Features Section */}
         <section id="infrastructure" className="container mx-auto px-6 py-24">

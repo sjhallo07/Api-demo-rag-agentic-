@@ -62,12 +62,14 @@ export default function StrategyBuilder() {
   const [backtestData, setBacktestData] = useState<any[] | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('strategy_templates');
-    if (saved) {
-      try {
-        setTemplates(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse templates", e);
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('strategy_templates');
+      if (saved) {
+        try {
+          setTemplates(JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to parse templates", e);
+        }
       }
     }
   }, []);
@@ -84,7 +86,9 @@ export default function StrategyBuilder() {
 
     const updated = [...templates, newTemplate];
     setTemplates(updated);
-    localStorage.setItem('strategy_templates', JSON.stringify(updated));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('strategy_templates', JSON.stringify(updated));
+    }
     setTemplateName('');
     setShowSaveDialog(false);
   };
@@ -93,7 +97,9 @@ export default function StrategyBuilder() {
     e.stopPropagation();
     const updated = templates.filter(t => t.id !== id);
     setTemplates(updated);
-    localStorage.setItem('strategy_templates', JSON.stringify(updated));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('strategy_templates', JSON.stringify(updated));
+    }
   };
 
   const loadTemplate = (template: StrategyTemplate) => {

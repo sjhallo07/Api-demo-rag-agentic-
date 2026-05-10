@@ -18,7 +18,8 @@ import {
   Clock,
   BrainCircuit,
   Plus,
-  Layers
+  Layers,
+  Check
 } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -54,7 +55,7 @@ ChartJS.register(
   Filler
 );
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/utils.ts';
 import { Security, UniverseQueryResponse, SavedView } from '../types';
 import { addAssetToPortfolio } from '../services/portfolioService';
 import { UNIVERSE_METADATA } from '../constants';
@@ -89,9 +90,11 @@ export default function UniverseExplorer() {
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
 
   useEffect(() => {
-    const storedViews = localStorage.getItem('BITA_SAVED_VIEWS');
-    if (storedViews) {
-      setSavedViews(JSON.parse(storedViews));
+    if (typeof localStorage !== 'undefined') {
+      const storedViews = localStorage.getItem('BITA_SAVED_VIEWS');
+      if (storedViews) {
+        setSavedViews(JSON.parse(storedViews));
+      }
     }
   }, []);
 
@@ -105,6 +108,76 @@ export default function UniverseExplorer() {
 
   const SECTORS = UNIVERSE_METADATA.SECTORS;
   const THEMES = UNIVERSE_METADATA.THEMES;
+
+  const ThemeMultiSelect = ({ 
+    options, 
+    selected, 
+    onChange, 
+    onClose 
+  }: { 
+    options: readonly string[], 
+    selected: string[], 
+    onChange: (newSelected: string[]) => void,
+    onClose: () => void
+  }) => {
+    return (
+      <>
+        <div className="fixed inset-0 z-10" onClick={onClose} />
+        <div className="absolute top-full mt-2 right-0 sm:left-0 w-56 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="p-2 border-b border-[#1F1F23] bg-[#16161A]/50 flex items-center justify-between">
+             <span className="text-[9px] font-mono font-bold text-[#52525B] uppercase tracking-tighter">SELECT_THEMES</span>
+             <div className="flex gap-2">
+                <button 
+                  onClick={() => onChange([...options])}
+                  className="text-[8px] font-mono text-[#00FF41] hover:underline"
+                >
+                  ALL
+                </button>
+                <button 
+                  onClick={() => onChange([])}
+                  className="text-[8px] font-mono text-red-500 hover:underline"
+                >
+                  NONE
+                </button>
+             </div>
+          </div>
+          <div className="max-h-64 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+            {options.map(option => (
+              <button
+                key={option}
+                onClick={() => {
+                  const newSelected = selected.includes(option)
+                    ? selected.filter(t => t !== option)
+                    : [...selected, option];
+                  onChange(newSelected);
+                }}
+                className={cn(
+                  "w-full text-left px-3 py-2 rounded text-[10px] font-mono flex items-center justify-between group transition-all",
+                  selected.includes(option) 
+                    ? "bg-[#00FF41]/10 text-[#00FF41] border border-[#00FF41]/20" 
+                    : "text-[#71717A] hover:bg-[#16161A] hover:text-[#A1A1AA] border border-transparent"
+                )}
+              >
+                <span className="truncate">{option.toUpperCase()}</span>
+                {selected.includes(option) ? (
+                  <div className="w-3 h-3 rounded-sm bg-[#00FF41] flex items-center justify-center text-black">
+                     <Check size={8} strokeWidth={4} />
+                  </div>
+                ) : (
+                  <div className="w-3 h-3 rounded-sm border border-[#1F1F23] group-hover:border-[#52525B]" />
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="p-2 border-t border-[#1F1F23] bg-[#0A0A0B] text-center">
+             <p className="text-[8px] font-mono text-[#3F3F46] leading-relaxed">
+               ORCHESTRATING {selected.length} ACTIVE_THEMES
+             </p>
+          </div>
+        </div>
+      </>
+    );
+  };
 
   const getThemeAssetCount = (theme: string) => {
     // In a real app, this would come from the API
@@ -260,7 +333,9 @@ export default function UniverseExplorer() {
     };
     const updatedViews = [...savedViews, newView];
     setSavedViews(updatedViews);
-    localStorage.setItem('BITA_SAVED_VIEWS', JSON.stringify(updatedViews));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('BITA_SAVED_VIEWS', JSON.stringify(updatedViews));
+    }
   };
 
   const loadView = (view: SavedView) => {
@@ -662,30 +737,15 @@ export default function UniverseExplorer() {
                 </button>
                 
                 {showThemeDropdown && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowThemeDropdown(false)} />
-                    <div className="absolute top-full mt-2 right-0 sm:left-0 w-48 bg-[#0D0D0F] border border-[#1F1F23] rounded-md shadow-2xl z-20 p-2 space-y-1">
-                      {THEMES.map(theme => (
-                        <button
-                          key={theme}
-                          onClick={() => {
-                            const newThemes = selectedThemes.includes(theme)
-                              ? selectedThemes.filter(t => t !== theme)
-                              : [...selectedThemes, theme];
-                            setSelectedThemes(newThemes);
-                            performSearch(query, { themes: newThemes, sector: selectedSector });
-                          }}
-                          className={cn(
-                            "w-full text-left px-3 py-2 rounded text-[10px] font-mono flex items-center justify-between",
-                            selectedThemes.includes(theme) ? "bg-[#00FF41]/10 text-[#00FF41]" : "text-[#71717A] hover:bg-[#16161A]"
-                          )}
-                        >
-                          {theme.toUpperCase()}
-                          {selectedThemes.includes(theme) && <div className="w-1.5 h-1.5 rounded-full bg-[#00FF41]" />}
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                  <ThemeMultiSelect 
+                    options={THEMES}
+                    selected={selectedThemes}
+                    onChange={(newThemes) => {
+                      setSelectedThemes(newThemes);
+                      performSearch(query, { themes: newThemes, sector: selectedSector });
+                    }}
+                    onClose={() => setShowThemeDropdown(false)}
+                  />
                 )}
               </div>
 

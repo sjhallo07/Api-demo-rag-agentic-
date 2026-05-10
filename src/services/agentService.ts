@@ -1,5 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { searchUniverse } from "./universeService.ts";
+import { getQuote } from "./finnhubService.ts";
+import { semanticSearch } from "./vectorService.ts";
+import { getKnowledgeBase } from "./knowledgeService.ts";
 
 export interface AgentResponse {
   content: string;
@@ -38,7 +41,7 @@ TONE: Professional, data-centric, analytical, and concise.`;
       
       const ai = new GoogleGenAI({ apiKey: apiKey });
       await ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-3-flash-preview",
         contents: "ping",
       });
       return true;
@@ -53,12 +56,17 @@ TONE: Professional, data-centric, analytical, and concise.`;
     // Robust parsing for quoted strings
     apiKey = apiKey.replace(/^["'](.+)["']$/, '$1').trim();
 
-    console.log(`BITA Orchestrator: Initializing with BITA_AI_API_KEY_STATUS: ${apiKey ? "FOUND_AND_NOT_EMPTY" : "NOT_FOUND_OR_EMPTY"}`);
-
+    // Fallback to platform-provided GEMINI_API_KEY if custom BITA key is missing
     if (!apiKey || apiKey === "MY_BITA_AI_API_KEY") {
-      console.error("BITA Orchestrator: BITA_AI_API_KEY is missing or empty.");
+      apiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["'](.+)["']$/, '$1');
+    }
+
+    console.log(`BITA Orchestrator: Initializing with API_KEY_STATUS: ${apiKey ? "FOUND" : "NOT_FOUND"}`);
+
+    if (!apiKey) {
+      console.error("BITA Orchestrator: No valid Gemini API key found.");
       return {
-        content: `ERROR: BITA_AI_API_KEY is missing. Please ensure you have added a secret named 'BITA_AI_API_KEY' in the AI Studio Settings (Secrets icon on the left).`,
+        content: `ERROR: Gemini API Key is missing. Please ensure you have added a secret named 'BITA_AI_API_KEY' or 'GEMINI_API_KEY' in the AI Studio Settings.`,
         data: []
       };
     }
@@ -91,21 +99,33 @@ TONE: Professional, data-centric, analytical, and concise.`;
       if (customTemp === undefined) temperature = 0;
     } else {
       universeResults = searchUniverse(query);
+      
+      // Inject real-time market data if ticker found
+      let marketData = "";
+      const tickerMatch = query.match(/\b([A-Z]{1,5})\b/);
+      if (tickerMatch) {
+        const quote = await getQuote(tickerMatch[1]);
+        if (quote && quote.c > 0) {
+          marketData = `REAL_TIME_DATA (${tickerMatch[1]}): Price $${quote.c}, Change $${quote.d} (${quote.dp}%).`;
+        }
+      }
+
       prompt = `
         INTERNAL PROJECT FOCUS: BITA Financial Intelligence Terminal.
+        MARKET DATA: ${marketData || "None"}
         DOCUMENT CONTEXT: ${docContext || "None"}
         UNIVERSE DATA: ${JSON.stringify(universeResults)}
         USER QUERY: ${query}
-        INSTRUCTIONS: Reference specific chunks and suggest tickers.
+        INSTRUCTIONS: Reference specific chunks and suggest tickers. Always cite the Source_Doc_X and Chunk_Y for each claim you make using the format [Source_Doc_X_Chunk_Y].
       `;
     }
     
     try {
-      console.log(`BITA Orchestrator: Sending request to Gemini [Model: gemini-flash-latest, Type: ${extractionOnly ? 'Extraction' : 'Chat'}]`);
+      console.log(`BITA Orchestrator: Sending request to Gemini [Model: gemini-3-flash-preview, Type: ${extractionOnly ? 'Extraction' : 'Chat'}]`);
       
       const ai = new GoogleGenAI({ apiKey: apiKey });
       const response = await ai.models.generateContent({ 
-        model: "gemini-flash-latest", 
+        model: "gemini-3-flash-preview", 
         contents: prompt,
         config: {
           systemInstruction: systemInstruction,
@@ -127,6 +147,17 @@ TONE: Professional, data-centric, analytical, and concise.`;
       const errorMsg = error.message || "";
       const errorJson = JSON.stringify(error);
       
+      if (!extractionOnly && (errorMsg.includes("429") || errorMsg.includes("RESOURCE_EXHAUSTED") || errorJson.includes("429"))) {
+        return await this.localFallback(query, documents);
+      }
+
+      if (errorMsg.includes("429") || errorMsg.includes("RESOURCE_EXHAUSTED") || errorJson.includes("429")) {
+        return {
+          content: "QUOTA_EXHAUSTED: You have reached the usage limit for the Gemini free tier. Please wait a few minutes, or if you are using a personal key, check your daily quota. You can also provide an O1-supported API key with higher limits in settings.",
+          data: []
+        };
+      }
+
       if (errorMsg.includes("API key not valid") || errorJson.includes("API_KEY_INVALID") || errorMsg.includes("API key expired") || errorJson.includes("API_KEY_EXPIRED")) {
         return {
           content: "AUTHENTICATION_FAILED: The provided BITA_AI_API_KEY is invalid or has expired. Please renew your key in the 'Secrets' panel in AI Studio Settings.",
@@ -164,6 +195,73 @@ TONE: Professional, data-centric, analytical, and concise.`;
       start += (size - overlap);
     }
     return chunks;
+  }
+
+  /**
+   * Fallback logic when Gemini LLM is unavailable
+   */
+  private async localFallback(query: string, documents?: string[]): Promise<AgentResponse> {
+    console.log("BITA Orchestrator: Entering Local Fallback Mode (LLM unavailable)");
+    
+    let fallbackContent = "### [BITA_LOCAL_INTELLIGENCE_FALLBACK]\n\n";
+    fallbackContent += "The primary Gemini Orchestrator is currently at capacity or unavailable. Switching to local semantic retrieval and market data telemetry.\n\n";
+
+    // 1. Finnhub Integration (Market Data)
+    const tickerMatch = query.match(/\b([A-Z]{1,5})\b/);
+    if (tickerMatch) {
+      const symbol = tickerMatch[1];
+      const quote = await getQuote(symbol);
+      if (quote && quote.c > 0) {
+        fallbackContent += `**Real-time Market Telemetry (${symbol}):**\n`;
+        fallbackContent += `- Current Price: $${quote.c.toFixed(2)}\n`;
+        fallbackContent += `- Daily Change: ${quote.d >= 0 ? '+' : ''}${quote.d.toFixed(2)} (${quote.dp.toFixed(2)}%)\n\n`;
+      }
+    }
+
+    // 2. Semantic Retrieval (Transformers.js)
+    const candidates: string[] = [];
+    
+    try {
+      // Add Knowledge Base
+      const kb = getKnowledgeBase();
+      kb.forEach(ins => candidates.push(`[Knowledge_Base]: ${ins.title} - ${ins.content}`));
+      
+      // Add uploaded Docs
+      if (documents) {
+        documents.forEach(doc => {
+          const chunks = this.chunkText(doc, 500, 100); // smaller chunks for fallback
+          chunks.slice(0, 10).forEach(c => candidates.push(`[Uploaded_Doc]: ${c}`));
+        });
+      }
+
+      if (candidates.length > 0) {
+        const matches = await semanticSearch(query, candidates, 3);
+        if (matches.length > 0) {
+          fallbackContent += "**Relevant Context Matches (Semantic Search):**\n";
+          matches.forEach(m => {
+            fallbackContent += `> ${m.content.substring(0, 200)}... (Match Score: ${(m.score * 100).toFixed(1)}%)\n\n`;
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("BITA Orchestrator: Local semantic search fallback failed.", e);
+    }
+
+    // 3. Universe Static Search
+    const universeResults = searchUniverse(query);
+    if (universeResults.length > 0) {
+      fallbackContent += "**Universe Construction Suggestions:**\n";
+      universeResults.slice(0, 3).forEach(res => {
+         fallbackContent += `- ${res.name} (${res.id})\n`;
+      });
+    }
+
+    fallbackContent += "\n*Note: Natural language synthesis is limited in fallback mode. Please check your Gemini API key in settings for full Orchestration.*";
+
+    return {
+      content: fallbackContent,
+      data: universeResults
+    };
   }
 }
 

@@ -95,6 +95,7 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [chatWidth, setChatWidth] = useState(400);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
 
@@ -250,6 +251,12 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
               className="p-1.5 hover:bg-[#1F1F23] rounded transition-colors text-[#71717A] hover:text-white"
             >
               {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+            <button 
+              onClick={() => setIsMobileChatOpen(true)}
+              className="lg:hidden p-1.5 hover:bg-[#1F1F23] rounded transition-colors text-[#71717A] hover:text-white"
+            >
+              <Terminal size={18} />
             </button>
             <div className="flex items-center gap-2 text-xs font-mono text-[#71717A] truncate max-w-[200px] sm:max-w-none">
               <Compass size={14} className="shrink-0" />
@@ -474,10 +481,23 @@ function Dashboard({ user, onLogout }: { user: UserProfile, onLogout: () => void
           </div>
         </div>
 
-        {/* Mobile View Terminal Overlay (Hidden by default, used when chat is active on mobile) */}
-        <div className="lg:hidden flex flex-col h-full overflow-hidden">
-           <ChatTerminal />
-        </div>
+        {/* Mobile View Terminal Overlay */}
+        {isMobileChatOpen && (
+          <div className="fixed inset-0 z-[60] bg-[#0A0A0B] flex flex-col">
+            <div className="p-4 border-b border-[#1F1F23] flex items-center justify-between shrink-0 bg-[#0D0D0F]">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#00FF41] shadow-[0_0_8px_rgba(0,255,65,0.5)]" />
+                <span className="text-[10px] font-mono font-bold tracking-widest">BITA_ASSIST_v4.2</span>
+              </div>
+              <button onClick={() => setIsMobileChatOpen(false)} className="p-2 hover:bg-[#1F1F23] rounded">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ChatTerminal />
+            </div>
+          </div>
+        )}
 
         {/* Mobile Navbar (FontAwesome) */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0D0D0F] border-t border-[#1F1F23] flex items-center justify-around px-4 z-[60] backdrop-blur-md bg-opacity-90">
@@ -556,28 +576,34 @@ export default function App() {
   const [view, setView] = useState<'landing' | 'auth'>('landing');
 
   useEffect(() => {
-    const savedToken = localStorage.getItem(SESSION_KEY);
-    if (savedToken) {
-      // Future: Real token verification
-      setUser({
-        id: 'u_123',
-        email: 'john@bita.com',
-        name: 'John Doe',
-        isVerified: true,
-        plan: 'standard',
-        joinedAt: new Date().toISOString()
-      });
+    if (typeof localStorage !== 'undefined') {
+      const savedToken = localStorage.getItem(SESSION_KEY);
+      if (savedToken) {
+        // Future: Real token verification
+        setUser({
+          id: 'u_123',
+          email: 'john@bita.com',
+          name: 'John Doe',
+          isVerified: true,
+          plan: 'standard',
+          joinedAt: new Date().toISOString()
+        });
+      }
     }
     setIsLoading(false);
   }, []);
 
   const handleAuthSuccess = (token: string, userData: UserProfile) => {
-    localStorage.setItem(SESSION_KEY, token);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(SESSION_KEY, token);
+    }
     setUser(userData);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem(SESSION_KEY);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(SESSION_KEY);
+    }
     setUser(null);
     setView('landing');
   };

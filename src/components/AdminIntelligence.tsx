@@ -14,7 +14,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/utils.ts';
 import NeuralHealth from './NeuralHealth';
 import { getKnowledgeBase, addInsight, FinancialInsight } from '../services/knowledgeService';
 

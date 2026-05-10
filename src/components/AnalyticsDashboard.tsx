@@ -4,23 +4,31 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { fetchAnalyticsData } from '../services/analyticsService';
+import { getPortfolio, PortfolioPosition } from '../services/portfolioService';
 import { Loader2, TrendingUp, ShieldAlert, Leaf } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/utils.ts';
 
 const COLORS = ['#00FF41', '#3B82F6', '#F43F5E', '#A855F7', '#EAB308'];
 
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<any>(null);
+  const [portfolio, setPortfolio] = useState<PortfolioPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('30d');
   const [portfolioId, setPortfolioId] = useState('all');
 
   useEffect(() => {
     setLoading(true);
-    fetchAnalyticsData(timeframe, portfolioId).then(res => {
-      setData(res);
+    async function fetchData() {
+      const [analytics, port] = await Promise.all([
+        fetchAnalyticsData(timeframe, portfolioId),
+        getPortfolio()
+      ]);
+      setData(analytics);
+      setPortfolio(port);
       setLoading(false);
-    });
+    }
+    fetchData();
   }, [timeframe, portfolioId]);
 
   if (loading) return (
@@ -91,6 +99,35 @@ export default function AnalyticsDashboard() {
            ))}
         </div>
       </div>
+
+       {/* Detailed Position ESG */}
+       <div className="bg-[#0D0D0F] border border-[#1F1F23] rounded-lg p-6">
+         <h2 className="text-sm text-[#71717A] mb-4">POSITION_ESG_DETAILS</h2>
+         <div className="overflow-x-auto">
+           <table className="w-full text-left text-xs text-[#71717A]">
+             <thead>
+               <tr className="border-b border-[#1F1F23]">
+                 <th className="pb-2">TICKER</th>
+                 <th className="pb-2">NAME</th>
+                 <th className="pb-2">ESG_RATING</th>
+                 <th className="pb-2">ESG_SCORE</th>
+                 <th className="pb-2">CONTROVERSY</th>
+               </tr>
+             </thead>
+             <tbody className="text-white">
+               {portfolio.map(pos => (
+                 <tr key={pos.id} className="border-b border-[#1F1F23] hover:bg-[#16161A]">
+                   <td className="py-3 text-[#00FF41] font-bold">{pos.id}</td>
+                   <td className="py-3">{pos.name}</td>
+                   <td className="py-3">{pos.esg}</td>
+                   <td className="py-3">{pos.esgScore}</td>
+                   <td className={cn("py-3 capitalize", pos.controversyLevel === 'low' ? 'text-[#00FF41]' : pos.controversyLevel === 'medium' ? 'text-yellow-500' : 'text-red-500')}>{pos.controversyLevel}</td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>
+         </div>
+       </div>
 
        {/* Sectors & Countries */}
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

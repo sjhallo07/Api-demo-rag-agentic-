@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -35,7 +35,7 @@ import {
   Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/utils.ts';
 import { PortfolioPosition, getPortfolio, savePortfolio, removeAssetFromPortfolio } from '../services/portfolioService';
 import { INSTRUMENTS, Security } from '../services/universeService';
 import { FinnhubWS, getQuote, predictPriceTrend } from '../services/finnhubService';
@@ -166,11 +166,12 @@ export default function PortfolioDashboard() {
   const [prediction, setPrediction] = useState<any | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
 
+  const ws = useRef<FinnhubWS | null>(null);
+
   useEffect(() => {
     refreshData();
 
-    // Setup real-time updates
-    const ws = new FinnhubWS((data) => {
+    ws.current = new FinnhubWS((data) => {
       if (data.type === 'trade') {
         const trades = data.data;
         const newPrices: Record<string, number> = {};
@@ -181,14 +182,15 @@ export default function PortfolioDashboard() {
       }
     });
 
-    ws.connect();
+    ws.current.connect();
 
-    // Subscribe to all positions
-    const currentPortfolio = getPortfolio();
-    currentPortfolio.forEach(p => ws.subscribe(p.id));
-
-    return () => ws.disconnect();
+    return () => ws.current?.disconnect();
   }, []);
+
+  useEffect(() => {
+    // Subscribe to all current positions
+    portfolio.forEach(p => ws.current?.subscribe(p.id));
+  }, [portfolio]);
 
   const refreshData = async () => {
     setIsRefreshing(true);

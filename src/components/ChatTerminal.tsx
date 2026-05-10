@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Image as ImageIcon, Loader2, Sparkles, AlertCircle, FileUp, X, FileText, File } from 'lucide-react';
+import { Send, Image as ImageIcon, Loader2, Sparkles, AlertCircle, FileUp, X, FileText, File, Copy, Check, Download, Terminal as TerminalIcon, Play } from 'lucide-react';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -111,6 +111,39 @@ export default function ChatTerminal() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const exportResponse = (message: ChatMessage) => {
+    const blob = new Blob([message.content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bita_response_${message.id}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const runCodeInTerminal = (code: string) => {
+    // If it looks like a BITA CLI command, we can just execute it
+    if (code.trim().startsWith('/')) {
+      setInput(code.trim());
+      // We need to wait for state update or just call handleSend with the code
+      setTimeout(() => {
+        const sendBtn = document.querySelector('button[title="Send Message"]') as HTMLButtonElement;
+        if (sendBtn) sendBtn.click();
+      }, 0);
+    } else {
+      // Simulate terminal execution feedback
+      window.dispatchEvent(new CustomEvent('bit_terminal_exec', { detail: { command: code } }));
+    }
+  };
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -172,9 +205,9 @@ export default function ChatTerminal() {
           } else if (command === '/export-data') {
             responseContent = `> Executing 'export-data'...\n\nPackaging local workspace data.\n\nData exported successfully.`;
             const data = {
-              portfolio: localStorage.getItem('bita_portfolio'),
-              strategies: localStorage.getItem('strategy_templates'),
-              history: localStorage.getItem('bita_chat_history'),
+              portfolio: typeof localStorage !== 'undefined' ? localStorage.getItem('bita_portfolio') : null,
+              strategies: typeof localStorage !== 'undefined' ? localStorage.getItem('strategy_templates') : null,
+              history: typeof localStorage !== 'undefined' ? localStorage.getItem('bita_chat_history') : null,
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -257,9 +290,11 @@ esac
         try {
           const jsonText = atob(workspaceAttachment.data.split(",")[1]);
           const data = JSON.parse(jsonText);
-          if (data.portfolio) localStorage.setItem('bita_portfolio', data.portfolio);
-          if (data.strategies) localStorage.setItem('strategy_templates', data.strategies);
-          if (data.history) localStorage.setItem('bita_chat_history', data.history);
+          if (typeof localStorage !== 'undefined') {
+            if (data.portfolio) localStorage.setItem('bita_portfolio', data.portfolio);
+            if (data.strategies) localStorage.setItem('strategy_templates', data.strategies);
+            if (data.history) localStorage.setItem('bita_chat_history', data.history);
+          }
           setMessages(prev => [...prev, {
             id: Date.now().toString(),
             role: 'assistant',
@@ -380,11 +415,32 @@ esac
               </div>
               
               <div className={cn(
-                "p-3 rounded-lg text-sm leading-relaxed border shadow-sm",
+                "p-3 rounded-lg text-sm leading-relaxed border shadow-sm relative group/msg",
                 message.role === 'user' 
                   ? "bg-[#1F1F23] border-[#2A2A30] text-[#E4E4E7]" 
                   : "bg-[#0A0A0B] border-[#1F1F23] text-[#A1A1AA]"
               )}>
+                {/* Message Actions */}
+                <div className={cn(
+                  "absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity",
+                  message.role === 'user' ? "hidden" : "flex"
+                )}>
+                   <button 
+                     onClick={() => copyToClipboard(message.content, message.id)}
+                     className="p-1.5 bg-[#16161A] border border-[#1F1F23] rounded hover:border-[#00FF41]/50 text-[#52525B] hover:text-[#00FF41] transition-all"
+                     title="Copy Response"
+                   >
+                     {copiedId === message.id ? <Check size={12} /> : <Copy size={12} />}
+                   </button>
+                   <button 
+                     onClick={() => exportResponse(message)}
+                     className="p-1.5 bg-[#16161A] border border-[#1F1F23] rounded hover:border-[#3B82F6]/50 text-[#52525B] hover:text-[#3B82F6] transition-all"
+                     title="Export as MD"
+                   >
+                     <Download size={12} />
+                   </button>
+                </div>
+
                 {message.attachments && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {message.attachments.map((at, i) => (
@@ -415,15 +471,48 @@ esac
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
+                      a: ({node, ...props}) => <a {...props} className="text-[#00FF41] font-bold underline decoration-wavy" />,
                       code({ node, inline, className, children, ...props }: any) {
                         const content = String(children).replace(/\n$/, '');
-                        if (!inline && className === 'language-json') {
+                        const language = className?.replace('language-', '') || '';
+                        
+                        if (!inline && language === 'json') {
                           try {
                             const data = JSON.parse(content);
                             if (data.type === 'backtest') return <BacktestWidget data={data} />;
                             if (data.type === 'assets' || data.assets) return <AssetWidget assets={data.assets || data} />;
                           } catch (e) {}
                         }
+
+                        if (!inline) {
+                          return (
+                            <div className="relative group/code my-4">
+                              <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 group-hover/code:opacity-100 transition-opacity z-10">
+                                {(language === 'bash' || language === 'sh' || content.startsWith('/')) && (
+                                  <button 
+                                    onClick={() => runCodeInTerminal(content)}
+                                    className="p-1 bgColor-[#1F1F23] border border-[#2A2A30] rounded hover:border-[#00FF41] text-[#00FF41] flex items-center gap-1 px-1.5"
+                                    title="Run in Terminal"
+                                  >
+                                    <Play size={10} fill="currentColor" />
+                                    <span className="text-[8px] font-mono font-bold">RUN</span>
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => copyToClipboard(content, `code-${Math.random()}`)}
+                                  className="p-1 bgColor-[#1F1F23] border border-[#2A2A30] rounded hover:border-[#E4E4E7] text-[#71717A] hover:text-[#E4E4E7]"
+                                  title="Copy Code"
+                                >
+                                  <Copy size={10} />
+                                </button>
+                              </div>
+                              <code className={cn(className, "block p-4 rounded-lg bg-[#050505] border border-[#1F1F23] overflow-x-auto")} {...props}>
+                                {children}
+                              </code>
+                            </div>
+                          );
+                        }
+
                         return (
                           <code className={className} {...props}>
                             {children}
@@ -432,7 +521,7 @@ esac
                       }
                     }}
                   >
-                    {message.content}
+                    {message.role === 'assistant' ? message.content.replace(/\[Source_Doc_(\d+)_Chunk_(\d+)\]/g, '[Doc $1.$2](#)') : message.content}
                   </ReactMarkdown>
                 </div>
               </div>
@@ -564,6 +653,7 @@ esac
               onClick={handleSend}
               disabled={isLoading || (!input.trim() && stagedAttachments.length === 0)}
               className="p-2 bg-[#00FF41] text-black rounded-md hover:bg-[#00E53B] disabled:opacity-50 disabled:grayscale transition-all"
+              title="Send Message"
             >
               {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
             </button>

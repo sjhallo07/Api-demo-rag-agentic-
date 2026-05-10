@@ -50,10 +50,12 @@ export async function getDeviceId(): Promise<string> {
   } catch (error) {
     console.error('FingerprintJS error, falling back to random UUID', error);
     // Ultimate fallback if fingerprint script gets blocked
-    let fallbackId = localStorage.getItem('BITA_FALLBACK_DEVICE_ID');
+    let fallbackId = typeof localStorage !== 'undefined' ? localStorage.getItem('BITA_FALLBACK_DEVICE_ID') : null;
     if (!fallbackId) {
       fallbackId = 'uuid-' + Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('BITA_FALLBACK_DEVICE_ID', fallbackId);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('BITA_FALLBACK_DEVICE_ID', fallbackId);
+      }
     }
     return fallbackId;
   }

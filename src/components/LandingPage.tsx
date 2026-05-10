@@ -26,7 +26,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/utils.ts';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -35,6 +35,8 @@ interface LandingPageProps {
 const RAGArchitecture = () => {
   const [activeStep, setActiveStep] = React.useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = React.useState(false);
+  const [paths, setPaths] = React.useState<Record<string, string>>({});
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const steps = [
     {
@@ -87,6 +89,44 @@ const RAGArchitecture = () => {
     }
   ];
 
+  const updatePaths = React.useCallback(() => {
+    if (!containerRef.current) return;
+    
+    const container = containerRef.current.getBoundingClientRect();
+    const getPos = (id: string) => {
+      const el = document.getElementById(id);
+      if (!el) return { x: 0, y: 0 };
+      const rect = el.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2 - container.left,
+        y: rect.top + rect.height / 2 - container.top
+      };
+    };
+
+    const user = getPos('node-user');
+    const ui = getPos('node-ui');
+    const aggregator = getPos('node-aggregator');
+    const memory = getPos('node-memory');
+    const planning = getPos('node-planning');
+    const models = getPos('node-models');
+    const agents = getPos('node-agents');
+
+    setPaths({
+      userToUi: `M ${user.x} ${user.y} L ${ui.x} ${ui.y}`,
+      uiToAggregator: `M ${ui.x} ${ui.y} L ${aggregator.x} ${aggregator.y}`,
+      memoryToAggregator: `M ${memory.x} ${memory.y} L ${aggregator.x} ${aggregator.y}`,
+      planningToAggregator: `M ${planning.x} ${planning.y} L ${aggregator.x} ${aggregator.y}`,
+      aggregatorToModels: `M ${aggregator.x} ${aggregator.y} L ${models.x} ${models.y}`,
+      aggregatorToAgents: `M ${aggregator.x} ${aggregator.y} L ${agents.x} ${agents.y}`,
+    });
+  }, []);
+
+  React.useEffect(() => {
+    updatePaths();
+    window.addEventListener('resize', updatePaths);
+    return () => window.removeEventListener('resize', updatePaths);
+  }, [updatePaths]);
+
   React.useEffect(() => {
     let interval: any;
     if (isAutoPlaying) {
@@ -98,30 +138,21 @@ const RAGArchitecture = () => {
   }, [isAutoPlaying]);
 
   return (
-    <div className="relative w-full max-w-5xl mx-auto py-12 px-4">
+    <div className="relative w-full max-w-5xl mx-auto py-12 px-4" ref={containerRef}>
       {/* Diagram Area */}
       <div className="relative h-[600px] mb-12 bg-[#050505]/50 border border-white/[0.05] rounded-3xl p-8 overflow-hidden">
         {/* Connection Lines (SVG) */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
-          <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
-            </marker>
-          </defs>
-          <g className="text-[#3F3F46]">
-            {/* User to UI */}
-            <path d="M 120 100 L 300 100" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-            {/* UI to Aggregator */}
-            <path d="M 500 100 L 500 250" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-            {/* Planning & Memory to Aggregator */}
-            <path d="M 750 200 L 600 300" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-            <path d="M 750 400 L 600 300" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-            {/* Aggregator to Models */}
-            <path d="M 400 300 L 200 300" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-            {/* Aggregator to Agents */}
-            <path d="M 500 350 L 500 450" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
+          <g className="text-[#3F3F46]" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4">
+            <path d={paths.userToUi || ''} />
+            <path d={paths.uiToAggregator || ''} />
+            <path d={paths.memoryToAggregator || ''} />
+            <path d={paths.planningToAggregator || ''} />
+            <path d={paths.aggregatorToModels || ''} />
+            <path d={paths.aggregatorToAgents || ''} />
           </g>
         </svg>
+
 
         {/* Nodes */}
         {/* User */}

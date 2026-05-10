@@ -12,6 +12,20 @@ export interface PortfolioPosition extends Security {
 const STORAGE_KEY = 'bita_portfolio_v1';
 
 export function getPortfolio(): PortfolioPosition[] {
+  if (typeof localStorage === 'undefined') {
+    return INSTRUMENTS.slice(0, 3).map(s => ({
+      ...s,
+      weight: 0.33,
+      unrealizedPL: (Math.random() * 10) - 2,
+      quantity: 100,
+      purchasedAt: new Date().toISOString(),
+      returnHistory: Array.from({ length: 30 }, (_, i) => ({
+        date: `2024-04-${i + 1}`,
+        value: 100 + (Math.random() * 10) + (i * 0.2)
+      }))
+    })) as PortfolioPosition[];
+  }
+  
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) {
     // Initial default portfolio
@@ -33,7 +47,9 @@ export function getPortfolio(): PortfolioPosition[] {
 }
 
 export function savePortfolio(portfolio: PortfolioPosition[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio));
+  }
 }
 
 export function addAssetToPortfolio(security: Security, quantity: number) {

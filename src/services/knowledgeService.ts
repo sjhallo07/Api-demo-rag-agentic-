@@ -33,6 +33,8 @@ const INITIAL_INSIGHTS: FinancialInsight[] = [
 ];
 
 export function getKnowledgeBase(): FinancialInsight[] {
+  if (typeof localStorage === 'undefined') return INITIAL_INSIGHTS;
+  
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_INSIGHTS));
@@ -49,7 +51,9 @@ export function addInsight(insight: Omit<FinancialInsight, 'id' | 'timestamp'>) 
     timestamp: new Date().toISOString()
   };
   kb.push(newInsight);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(kb));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(kb));
+  }
   return newInsight;
 }
 

@@ -13,7 +13,7 @@ import {
 } from 'chart.js';
 import { motion } from 'motion/react';
 import { TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/utils.ts';
 import { UNIVERSE_METADATA } from '../constants';
 
 ChartJS.register(
